@@ -38,7 +38,7 @@ func (h *MemStorageHandler) UpdateHandler(res http.ResponseWriter, req *http.Req
 		}
 		//h.service.WriteCount(metricName, metricValueInt)
 		res.Write([]byte(fmt.Sprintf("metric %s updated. value = %d", metricName, metricValueInt)))
-	case "gauger":
+	case "gauge":
 		metricValueFloat, err := strconv.ParseFloat(metricValue, 64)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest) //некорректное значение
