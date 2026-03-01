@@ -50,7 +50,4 @@ func (h *MemStorageHandler) UpdateHandler(res http.ResponseWriter, req *http.Req
 		res.WriteHeader(http.StatusBadRequest) //некорректный тип метрики
 		return
 	}
-
-	res.WriteHeader(http.StatusOK)
-
 }
