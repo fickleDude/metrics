@@ -23,8 +23,8 @@ func main() {
 
 	// Запускаем горутину
 	// for i := 0; i < 3; i++ {
-	go service.Update(ctx)
 	go service.Post(ctx)
+	go service.Update(ctx)
 	//}
 
 	// Ждем сигнала
