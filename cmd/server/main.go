@@ -7,6 +7,8 @@ import (
 )
 
 func main() {
+
+	//server
 	handler := handler.MemStorageHandler{}
 	http.HandleFunc(`/update/`, handler.UpdateHandler)
 
@@ -14,4 +16,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 }
