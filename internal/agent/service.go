@@ -14,7 +14,7 @@ import (
 
 type Task struct {
 	Value   interface{}
-	BaseUrl string
+	BaseURL string
 }
 
 type ClientService struct {
@@ -35,35 +35,35 @@ func Init(pollInterval int, reportInterval int) *ClientService {
 	var random float64
 	return &ClientService{memStat: &stats,
 		tasks: []Task{
-			{Value: &stats.Alloc, BaseUrl: "http://localhost:8080/update/gauge/Alloc"},
-			{Value: &stats.BuckHashSys, BaseUrl: "http://localhost:8080/update/gauge/BuckHashSys"},
-			{Value: &stats.Frees, BaseUrl: "http://localhost:8080/update/gauge/Frees"},
-			{Value: &stats.GCCPUFraction, BaseUrl: "http://localhost:8080/update/gauge/GCCPUFraction"},
-			{Value: &stats.GCSys, BaseUrl: "http://localhost:8080/update/gauge/GCSys"},
-			{Value: &stats.HeapAlloc, BaseUrl: "http://localhost:8080/update/gauge/HeapAlloc"},
-			{Value: &stats.HeapIdle, BaseUrl: "http://localhost:8080/update/gauge/HeapIdle"},
-			{Value: &stats.HeapInuse, BaseUrl: "http://localhost:8080/update/gauge/HeapInuse"},
-			{Value: &stats.HeapObjects, BaseUrl: "http://localhost:8080/update/gauge/HeapObjects"},
-			{Value: &stats.HeapReleased, BaseUrl: "http://localhost:8080/update/gauge/HeapReleased"},
-			{Value: &stats.HeapSys, BaseUrl: "http://localhost:8080/update/gauge/HeapSys"},
-			{Value: &stats.LastGC, BaseUrl: "http://localhost:8080/update/gauge/LastGC"},
-			{Value: &stats.Lookups, BaseUrl: "http://localhost:8080/update/gauge/Lookups"},
-			{Value: &stats.MCacheInuse, BaseUrl: "http://localhost:8080/update/gauge/MCacheInuse"},
-			{Value: &stats.MCacheSys, BaseUrl: "http://localhost:8080/update/gauge/MCacheSys"},
-			{Value: &stats.MSpanInuse, BaseUrl: "http://localhost:8080/update/gauge/MSpanInuse"},
-			{Value: &stats.MSpanSys, BaseUrl: "http://localhost:8080/update/gauge/MSpanSys"},
-			{Value: &stats.Mallocs, BaseUrl: "http://localhost:8080/update/gauge/Mallocs"},
-			{Value: &stats.NextGC, BaseUrl: "http://localhost:8080/update/gauge/NextGC"},
-			{Value: &stats.NumForcedGC, BaseUrl: "http://localhost:8080/update/gauge/NumForcedGC"},
-			{Value: &stats.NumGC, BaseUrl: "http://localhost:8080/update/gauge/NumGC"},
-			{Value: &stats.OtherSys, BaseUrl: "http://localhost:8080/update/gauge/OtherSys"},
-			{Value: &stats.PauseTotalNs, BaseUrl: "http://localhost:8080/update/gauge/PauseTotalNs"},
-			{Value: &stats.StackInuse, BaseUrl: "http://localhost:8080/update/gauge/StackInuse"},
-			{Value: &stats.StackSys, BaseUrl: "http://localhost:8080/update/gauge/StackSys"},
-			{Value: &stats.Sys, BaseUrl: "http://localhost:8080/update/gauge/Sys"},
-			{Value: &stats.TotalAlloc, BaseUrl: "http://localhost:8080/update/gauge/TotalAlloc"},
-			{Value: &count, BaseUrl: "http://localhost:8080/update/gauge/PollCount"},
-			{Value: &random, BaseUrl: "http://localhost:8080/update/gauge/RandomValue"},
+			{Value: &stats.Alloc, BaseURL: "http://localhost:8080/update/gauge/Alloc"},
+			{Value: &stats.BuckHashSys, BaseURL: "http://localhost:8080/update/gauge/BuckHashSys"},
+			{Value: &stats.Frees, BaseURL: "http://localhost:8080/update/gauge/Frees"},
+			{Value: &stats.GCCPUFraction, BaseURL: "http://localhost:8080/update/gauge/GCCPUFraction"},
+			{Value: &stats.GCSys, BaseURL: "http://localhost:8080/update/gauge/GCSys"},
+			{Value: &stats.HeapAlloc, BaseURL: "http://localhost:8080/update/gauge/HeapAlloc"},
+			{Value: &stats.HeapIdle, BaseURL: "http://localhost:8080/update/gauge/HeapIdle"},
+			{Value: &stats.HeapInuse, BaseURL: "http://localhost:8080/update/gauge/HeapInuse"},
+			{Value: &stats.HeapObjects, BaseURL: "http://localhost:8080/update/gauge/HeapObjects"},
+			{Value: &stats.HeapReleased, BaseURL: "http://localhost:8080/update/gauge/HeapReleased"},
+			{Value: &stats.HeapSys, BaseURL: "http://localhost:8080/update/gauge/HeapSys"},
+			{Value: &stats.LastGC, BaseURL: "http://localhost:8080/update/gauge/LastGC"},
+			{Value: &stats.Lookups, BaseURL: "http://localhost:8080/update/gauge/Lookups"},
+			{Value: &stats.MCacheInuse, BaseURL: "http://localhost:8080/update/gauge/MCacheInuse"},
+			{Value: &stats.MCacheSys, BaseURL: "http://localhost:8080/update/gauge/MCacheSys"},
+			{Value: &stats.MSpanInuse, BaseURL: "http://localhost:8080/update/gauge/MSpanInuse"},
+			{Value: &stats.MSpanSys, BaseURL: "http://localhost:8080/update/gauge/MSpanSys"},
+			{Value: &stats.Mallocs, BaseURL: "http://localhost:8080/update/gauge/Mallocs"},
+			{Value: &stats.NextGC, BaseURL: "http://localhost:8080/update/gauge/NextGC"},
+			{Value: &stats.NumForcedGC, BaseURL: "http://localhost:8080/update/gauge/NumForcedGC"},
+			{Value: &stats.NumGC, BaseURL: "http://localhost:8080/update/gauge/NumGC"},
+			{Value: &stats.OtherSys, BaseURL: "http://localhost:8080/update/gauge/OtherSys"},
+			{Value: &stats.PauseTotalNs, BaseURL: "http://localhost:8080/update/gauge/PauseTotalNs"},
+			{Value: &stats.StackInuse, BaseURL: "http://localhost:8080/update/gauge/StackInuse"},
+			{Value: &stats.StackSys, BaseURL: "http://localhost:8080/update/gauge/StackSys"},
+			{Value: &stats.Sys, BaseURL: "http://localhost:8080/update/gauge/Sys"},
+			{Value: &stats.TotalAlloc, BaseURL: "http://localhost:8080/update/gauge/TotalAlloc"},
+			{Value: &count, BaseURL: "http://localhost:8080/update/gauge/PollCount"},
+			{Value: &random, BaseURL: "http://localhost:8080/update/gauge/RandomValue"},
 		},
 		client:         http.Client{},
 		mutex:          sync.Mutex{},
@@ -96,11 +96,11 @@ func (c *ClientService) Update(ctx context.Context) {
 func (t *Task) sendTask(client http.Client) {
 	var target string
 	if v, ok := t.Value.(*uint64); ok {
-		target = fmt.Sprintf("%s/%d", t.BaseUrl, *v)
+		target = fmt.Sprintf("%s/%d", t.BaseURL, *v)
 	} else if v, ok := t.Value.(*float64); ok {
-		target = fmt.Sprintf("%s/%f", t.BaseUrl, *v)
+		target = fmt.Sprintf("%s/%f", t.BaseURL, *v)
 	} else {
-		target = fmt.Sprintf("%s/unknown", t.BaseUrl)
+		target = fmt.Sprintf("%s/unknown", t.BaseURL)
 	}
 
 	request, err := http.NewRequest(http.MethodPost, target, nil)
