@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"sync"
 	"time"
 )
 
@@ -18,7 +17,7 @@ type Task struct {
 }
 
 type ClientService struct {
-	mutex          sync.Mutex
+	//mutex          sync.Mutex
 	memStat        *runtime.MemStats
 	client         http.Client
 	tasks          []Task
@@ -65,8 +64,8 @@ func Init(pollInterval int, reportInterval int) *ClientService {
 			{Value: &count, BaseURL: "http://localhost:8080/update/gauge/PollCount"},
 			{Value: &random, BaseURL: "http://localhost:8080/update/gauge/RandomValue"},
 		},
-		client:         http.Client{},
-		mutex:          sync.Mutex{},
+		client: http.Client{},
+		//mutex:          sync.Mutex{},
 		pollCount:      &count,
 		randomValue:    &random,
 		PollInterval:   pollInterval,
@@ -80,12 +79,12 @@ func (c *ClientService) Update(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			c.mutex.Lock()
+			//c.mutex.Lock()
 			runtime.ReadMemStats(c.memStat)
 			*c.pollCount += 1
 			*c.randomValue = rand.Float64()
 			fmt.Println("metrics updated")
-			c.mutex.Unlock()
+			//c.mutex.Unlock()
 
 			time.Sleep(time.Duration(c.PollInterval) * time.Second)
 		}
@@ -122,11 +121,11 @@ func (c *ClientService) Post(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			c.mutex.Lock()
+			//c.mutex.Lock()
 			for _, t := range c.tasks {
 				t.sendTask(c.client)
 			}
-			c.mutex.Unlock()
+			//c.mutex.Unlock()
 			time.Sleep(time.Duration(c.ReportInterval) * time.Second)
 		}
 	}
