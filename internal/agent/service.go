@@ -105,11 +105,11 @@ func (t *Task) sendTask(client http.Client) {
 
 	request, err := http.NewRequest(http.MethodPost, target, nil)
 	if err != nil {
-		panic(err)
+		return
 	}
 	response, err := client.Do(request)
 	if err != nil {
-		panic(err)
+		return
 	}
 	io.Copy(os.Stdout, response.Body) // вывод ответа в консоль
 	response.Body.Close()

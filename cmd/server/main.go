@@ -12,7 +12,7 @@ func main() {
 	handler := handler.MemStorageHandler{}
 	http.HandleFunc(`/update/`, handler.UpdateHandler)
 
-	err := http.ListenAndServe(`localhost:8080`, nil)
+	err := http.ListenAndServe(`:8080`, nil)
 	if err != nil {
 		panic(err)
 	}
