@@ -62,7 +62,7 @@ func Init(pollInterval int, reportInterval int) *ClientService {
 			{Value: &stats.StackSys, BaseURL: "http://localhost:8080/update/gauge/StackSys"},
 			{Value: &stats.Sys, BaseURL: "http://localhost:8080/update/gauge/Sys"},
 			{Value: &stats.TotalAlloc, BaseURL: "http://localhost:8080/update/gauge/TotalAlloc"},
-			{Value: &count, BaseURL: "http://localhost:8080/update/gauge/PollCount"},
+			{Value: &count, BaseURL: "http://localhost:8080/update/counter/PollCount"},
 			{Value: &random, BaseURL: "http://localhost:8080/update/gauge/RandomValue"},
 		},
 		client: http.Client{},
