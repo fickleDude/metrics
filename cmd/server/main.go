@@ -11,6 +11,9 @@ import (
 
 func main() {
 
+	//flag
+	parseFlags()
+
 	//init
 	repository := repository.NewMemStorage()
 	service := service.NewMemStorageService(repository)
@@ -22,7 +25,7 @@ func main() {
 	r.Get("/value/{type}/{name}", handler.GetMetricHandler)
 	r.Post("/update/{type}/{name}/{value}", handler.UpdateMetricHandler)
 
-	err := http.ListenAndServe(`:8080`, r)
+	err := http.ListenAndServe(runAddr, r)
 	if err != nil {
 		panic(err)
 	}

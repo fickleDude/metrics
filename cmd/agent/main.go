@@ -17,8 +17,11 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
+	//flags
+	parseFlags()
+
 	//инициализируем метрики
-	service := agent.Init(2, 2)
+	service := agent.Init(runAddr, pollInterval, reportInterval)
 	fmt.Println("Инициализация...")
 	// Запускаем горутину
 	// for i := 0; i < 3; i++ {
