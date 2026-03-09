@@ -1,0 +1,46 @@
+package service
+
+import (
+	"fmt"
+
+	repository "github.com/fickleDude/metrics.git/internal/repository"
+)
+
+type MemStorageInterface interface {
+	UpdateCount(name string, delta int64)
+	UpdateGauge(name string, value float64)
+	GetMetric(name string) string
+	GetMetrics() string
+}
+
+type MemStorageService struct {
+	repository *repository.MemStorage
+}
+
+func NewMemStorageService(repository *repository.MemStorage) *MemStorageService {
+	return &MemStorageService{repository: repository}
+}
+func (r *MemStorageService) UpdateCount(name string, delta int64) {
+	r.repository.UpdateCount(name, delta)
+}
+
+func (r *MemStorageService) UpdateGauge(name string, value float64) {
+	r.repository.UpdateGauge(name, value)
+}
+
+func (r *MemStorageService) GetMetric(name string) string {
+	metric := r.repository.GetMetric(name)
+	if metric == nil {
+		return ""
+	}
+	return metric.GetValue()
+}
+
+func (r *MemStorageService) GetMetrics() string {
+	metrics := r.repository.GetMetrics()
+	var result string
+	for _, m := range metrics {
+		result += fmt.Sprintf("<p>%s : %s</p>", m.ID, m.GetValue())
+	}
+	return result
+}
