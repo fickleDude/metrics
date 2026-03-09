@@ -36,24 +36,6 @@ func TestUpdateHandler(t *testing.T) {
 				params: map[string]string{"type": "counter", "name": "test", "value": "9"},
 			},
 		},
-		// {
-		// 	name: "StatusMethodNotAllowed",
-		// 	code: 405,
-		// 	request: request{
-		// 		url:    "http://localhost:8080/update",
-		// 		method: "GET",
-		// 		params: map[string]string{"type": "counter", "name": "test", "value": "9"},
-		// 	},
-		// },
-		// {
-		// 	name: "StatusNotFound",
-		// 	code: 404,
-		// 	request: request{
-		// 		url:    "http://localhost:8080/update",
-		// 		method: "POST",
-		// 		params: map[string]string{"type": "counter", "value": "9"},
-		// 	},
-		// },
 		{
 			name: "StatusBadRequest invalid type",
 			code: 400,

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/fickleDude/metrics.git/internal/agent"
 )
@@ -24,15 +25,13 @@ func main() {
 	service := agent.Init(runAddr, pollInterval, reportInterval)
 	fmt.Println("Инициализация...")
 	// Запускаем горутину
-	// for i := 0; i < 3; i++ {
 	go service.Update(ctx)
 	go service.Post(ctx)
-
-	//}
 	fmt.Println("В работе")
 	// Ждем сигнала
 	<-sigChan
 	fmt.Println("\nПолучен Ctrl+Cзавершаем горутину...")
-	cancel() // Отменяем контекст
+	cancel()                                   // Отменяем контекст
+	time.Sleep(time.Duration(5) * time.Second) //ждем завершения горутин
 	fmt.Println("Программа завершена.")
 }
