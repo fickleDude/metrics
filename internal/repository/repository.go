@@ -4,6 +4,12 @@ import (
 	model "github.com/fickleDude/metrics.git/internal/model"
 )
 
+type MemStorageInterface interface {
+	UpdateCount(name string, delta int64)
+	UpdateGauge(name string, value float64)
+	GetMetric(name string) *model.Metrics
+	GetMetrics() []*model.Metrics
+}
 type MemStorage struct {
 	storage []*model.Metrics
 }

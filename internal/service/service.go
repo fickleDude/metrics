@@ -14,10 +14,10 @@ type MemStorageInterface interface {
 }
 
 type MemStorageService struct {
-	repository *repository.MemStorage
+	repository repository.MemStorageInterface
 }
 
-func NewMemStorageService(repository *repository.MemStorage) *MemStorageService {
+func NewMemStorageService(repository repository.MemStorageInterface) *MemStorageService {
 	return &MemStorageService{repository: repository}
 }
 func (r *MemStorageService) UpdateCount(name string, delta int64) {
