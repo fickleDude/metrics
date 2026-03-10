@@ -22,6 +22,7 @@ func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *ht
 	memName := chi.URLParam(req, "name")
 	memValue := chi.URLParam(req, "value")
 
+	res.Header().Set("Content-Type", "text/html")
 	switch memType {
 	case "counter":
 		memValueInt, err := strconv.ParseInt(memValue, 10, 0)
