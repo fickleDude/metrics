@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fickleDude/metrics.git/internal/agent"
+	"github.com/fickleDude/metrics.git/internal/config"
 )
 
 func main() {
@@ -18,11 +19,13 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	//flags
-	parseFlags()
+	//config
+	cfg := config.NewConfig()
+	cfg.ParseFlags()
+	cfg.ParseEnv()
 
 	//инициализируем метрики
-	service := agent.Init(runAddr, pollInterval, reportInterval)
+	service := agent.Init(cfg.RunAddr(), cfg.PollInterval(), cfg.ReportInterval())
 	fmt.Println("Инициализация...")
 	// Запускаем горутину
 	go service.Update(ctx)
