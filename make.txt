@@ -1,7 +1,0 @@
-go build -o .\cmd\server\server.exe .\cmd\server
-.\metricstest_v2.exe -test.v  -test.run=^TestIteration2[AB]*$ -source-path=. -agent-binary-path=cmd/agent/agent
-set SERVER_PORT=8081
-set ADDRESS="localhost:8081"
-set TEMP_FILE=out.txt
-
-.\metricstest_v2.exe -test.v  -test.run=^TestIteration6$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8081
