@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 
+	models "github.com/fickleDude/metrics.git/internal/model"
 	"github.com/fickleDude/metrics.git/internal/service"
 	"github.com/go-chi/chi/v5"
 )
@@ -15,6 +18,32 @@ type MemStorageHandler struct {
 
 func NewMemStorageHandler(service service.MemStorageInterface) *MemStorageHandler {
 	return &MemStorageHandler{service: service}
+}
+
+func (h *MemStorageHandler) UpdateMetricJsonHandler(res http.ResponseWriter, req *http.Request) {
+	//check content type
+	if req.Header.Get("Content-Type") != "application/json" {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	//decode request
+	var metric models.Metrics
+	if err := json.NewDecoder(req.Body).Decode(&metric); err != nil {
+		//log
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	//update repository data
+	switch metric.MType {
+	case "counter":
+		h.service.UpdateCount(metric.ID, *metric.Delta)
+	case "gauge":
+		h.service.UpdateGauge(metric.ID, *metric.Value)
+	default:
+		res.WriteHeader(http.StatusBadRequest) //некорректный тип метрики
+		return
+	}
+
 }
 
 func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *http.Request) {
@@ -47,9 +76,40 @@ func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *ht
 	}
 }
 
+func (h *MemStorageHandler) GetMetricJsonHandler(res http.ResponseWriter, req *http.Request) {
+	//check content type
+	if req.Header.Get("Content-Type") != "application/json" {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	//decode request
+	var metric models.Metrics
+	if err := json.NewDecoder(req.Body).Decode(&metric); err != nil {
+		//log
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	//get repository data
+	repoMetric := h.service.GetMetric(metric.ID, metric.MType)
+	if repoMetric == nil {
+		res.WriteHeader(http.StatusNotFound)
+		return
+	}
+	//encode response
+	res.Header().Set("Content-Type", "application/json")
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(repoMetric); err != nil {
+		//log
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	buf.WriteTo(res)
+}
+
 func (h *MemStorageHandler) GetMetricHandler(res http.ResponseWriter, req *http.Request) {
 	memName := chi.URLParam(req, "name")
-	memValue := h.service.GetMetric(memName)
+	memType := chi.URLParam(req, "type")
+	memValue := h.service.GetMetricValue(memName, memType)
 	if memValue == "" {
 		res.WriteHeader(http.StatusNotFound)
 		return
@@ -59,7 +119,7 @@ func (h *MemStorageHandler) GetMetricHandler(res http.ResponseWriter, req *http.
 
 func (h *MemStorageHandler) GetMetricsHandler(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/html")
-	memValues := h.service.GetMetrics()
+	memValues := h.service.GetMetricValues()
 	body := fmt.Sprintf(`<!DOCTYPE html>
 			<html lang="en">
 			<head>

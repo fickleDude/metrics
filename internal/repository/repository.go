@@ -7,7 +7,7 @@ import (
 type MemStorageInterface interface {
 	UpdateCount(name string, delta int64)
 	UpdateGauge(name string, value float64)
-	GetMetric(name string) *model.Metrics
+	GetMetric(name string, mType string) *model.Metrics
 	GetMetrics() []*model.Metrics
 }
 type MemStorage struct {
@@ -38,9 +38,9 @@ func (s *MemStorage) UpdateGauge(name string, value float64) {
 	s.storage = append(s.storage, &model.Metrics{ID: name, MType: model.Gauge, Delta: nil, Value: &value})
 }
 
-func (s *MemStorage) GetMetric(name string) *model.Metrics {
+func (s *MemStorage) GetMetric(name string, mType string) *model.Metrics {
 	for _, m := range s.storage {
-		if m.ID == name {
+		if m.MType == mType && m.ID == name {
 			return m
 		}
 	}

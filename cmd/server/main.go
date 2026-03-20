@@ -36,6 +36,8 @@ func main() {
 	r := chi.NewRouter()
 	r.Get("/", middleware.RequestLogger(handler.GetMetricsHandler))
 	r.Get("/value/{type}/{name}", middleware.RequestLogger(handler.GetMetricHandler))
+	r.Post("/update", middleware.RequestLogger(handler.UpdateMetricJsonHandler))
+	r.Post("/value", middleware.RequestLogger(handler.GetMetricJsonHandler))
 	r.Post("/update/{type}/{name}/{value}", middleware.RequestLogger(handler.UpdateMetricHandler))
 
 	err := http.ListenAndServe(cfg.RunAddr(), r)
