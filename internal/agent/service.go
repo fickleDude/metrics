@@ -20,11 +20,14 @@ type Task struct {
 }
 
 type ClientService struct {
-	mutex          sync.Mutex
-	memStat        *runtime.MemStats
-	client         http.Client
-	baseURL        string
-	tasks          map[string]*Task
+	mutex   sync.Mutex
+	memStat *runtime.MemStats
+	client  http.Client
+	baseURL string
+	tasks   map[string]*Task
+	//extra
+	pollCount      *int64
+	randomValue    *float64
 	pollInterval   int
 	reportInterval int
 }
@@ -32,15 +35,14 @@ type ClientService struct {
 func Init(serverAddress string, pollInterval int, reportInterval int) *ClientService {
 	//get initial stat
 	memStat := runtime.MemStats{}
-	runtime.ReadMemStats(&memStat)
-	var count int64 = 0
-	var random float64 = rand.Float64()
+	var count int64
+	var random float64
 
 	return &ClientService{
 		mutex:   sync.Mutex{},
 		memStat: &memStat,
 		client:  http.Client{},
-		baseURL: fmt.Sprintf("http://%s/update", serverAddress),
+		baseURL: fmt.Sprintf("http://%s/update/", serverAddress),
 		tasks: map[string]*Task{
 			"Alloc":         {Value: &memStat.Alloc, Type: "gauge"},
 			"BuckHashSys":   {Value: &memStat.BuckHashSys, Type: "gauge"},
@@ -69,11 +71,13 @@ func Init(serverAddress string, pollInterval int, reportInterval int) *ClientSer
 			"StackSys":      {Value: &memStat.StackSys, Type: "gauge"},
 			"Sys":           {Value: &memStat.Sys, Type: "gauge"},
 			"TotalAlloc":    {Value: &memStat.TotalAlloc, Type: "gauge"},
-			"PollCount":     {Value: count, Type: "counter"},
-			"RandomValue":   {Value: random, Type: "gauge"},
+			"PollCount":     {Value: &count, Type: "counter"},
+			"RandomValue":   {Value: &random, Type: "gauge"},
 		},
 		pollInterval:   pollInterval,
 		reportInterval: reportInterval,
+		pollCount:      &count,
+		randomValue:    &random,
 	}
 }
 
@@ -88,8 +92,8 @@ func (c *ClientService) Update(ctx context.Context) {
 			runtime.ReadMemStats(c.memStat)
 			//update metric
 			// c.metrics[0].Value = float64(c.memStat.Alloc)
-			c.tasks["PollCount"].Value = c.tasks["PollCount"].Value.(int64) + 1
-			c.tasks["RandomValue"].Value = rand.Float64()
+			*c.pollCount += 1
+			*c.randomValue = rand.Float64()
 			//*c.randomValue = rand.Float64()
 			c.mutex.Unlock()
 			//sleep
@@ -152,8 +156,8 @@ func (c *ClientService) Post(ctx context.Context) {
 					}
 
 				case "counter":
-					value, _ := v.Value.(int64)
-					metric.Delta = &value
+					value, _ := v.Value.(*int64)
+					metric.Delta = value
 				default:
 					//log
 					continue

@@ -44,7 +44,16 @@ func (s *MemStorage) GetMetric(name string, mType string) *model.Metrics {
 			return m
 		}
 	}
-	return nil
+	var value float64
+	var delta int64
+	switch mType {
+	case "gauge":
+		return &model.Metrics{ID: name, MType: mType, Value: &value}
+	case "counter":
+		return &model.Metrics{ID: name, MType: mType, Delta: &delta}
+	default:
+		return nil
+	}
 }
 
 func (s *MemStorage) GetMetrics() []*model.Metrics {
