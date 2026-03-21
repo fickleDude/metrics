@@ -37,8 +37,8 @@ func main() {
 	// r.Get("/value/{type}/{name}", middleware.RequestLogger(handler.GetMetricHandler))
 	// r.Post("/update", handler.UpdateMetricJsonHandler)
 	r.Route("/", func(r chi.Router) {
-		r.Post("/value/", handler.GetMetricJsonHandler)
-		r.Post("/update/", handler.UpdateMetricJsonHandler)
+		r.Post("/value/", handler.GetMetricJSONHandler)
+		r.Post("/update/", handler.UpdateMetricJSONHandler)
 	})
 	// r.Post("/value/", handler.GetMetricJsonHandler)
 	// r.Post("/update/{type}/{name}/{value}", middleware.RequestLogger(handler.UpdateMetricHandler))

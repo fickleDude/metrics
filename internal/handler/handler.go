@@ -20,7 +20,7 @@ func NewMemStorageHandler(service service.MemStorageInterface) *MemStorageHandle
 	return &MemStorageHandler{service: service}
 }
 
-func (h *MemStorageHandler) UpdateMetricJsonHandler(res http.ResponseWriter, req *http.Request) {
+func (h *MemStorageHandler) UpdateMetricJSONHandler(res http.ResponseWriter, req *http.Request) {
 	//check content type
 	if req.Header.Get("Content-Type") != "application/json" {
 		res.WriteHeader(http.StatusBadRequest)
@@ -76,7 +76,7 @@ func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *ht
 	}
 }
 
-func (h *MemStorageHandler) GetMetricJsonHandler(res http.ResponseWriter, req *http.Request) {
+func (h *MemStorageHandler) GetMetricJSONHandler(res http.ResponseWriter, req *http.Request) {
 	//check content type
 	if req.Header.Get("Content-Type") != "application/json" {
 		res.WriteHeader(http.StatusBadRequest)
