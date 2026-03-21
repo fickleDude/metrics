@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/fickleDude/metrics.git/internal/agent"
 	"github.com/fickleDude/metrics.git/internal/config"
+	"github.com/fickleDude/metrics.git/internal/logger"
 )
 
 func main() {
@@ -26,15 +26,15 @@ func main() {
 
 	//инициализируем метрики
 	service := agent.Init(cfg.RunAddr(), cfg.PollInterval(), cfg.ReportInterval())
-	fmt.Println("Инициализация...")
+	logger.Log.Debug("Инициализация...")
 	// Запускаем горутину
 	go service.Update(ctx)
 	go service.Post(ctx)
-	fmt.Println("В работе")
+	logger.Log.Debug("В работе")
 	// Ждем сигнала
 	<-sigChan
-	fmt.Println("\nПолучен Ctrl+Cзавершаем горутину...")
+	logger.Log.Debug("\nПолучен Ctrl+Cзавершаем горутину...")
 	cancel()                                   // Отменяем контекст
 	time.Sleep(time.Duration(5) * time.Second) //ждем завершения горутин
-	fmt.Println("Программа завершена.")
+	logger.Log.Debug("Программа завершена.")
 }

@@ -107,12 +107,13 @@ func sendTask(client http.Client, target string, metric models.Metrics) {
 	//encode response
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(metric); err != nil {
-		//log
+		logger.Log.Error(err.Error())
 		return
 	}
 	//create request
 	request, err := http.NewRequest(http.MethodPost, target, &buf)
 	if err != nil {
+		logger.Log.Error(err.Error())
 		return
 	}
 	request.Header.Set("Content-Type", "application/json")
@@ -120,6 +121,7 @@ func sendTask(client http.Client, target string, metric models.Metrics) {
 	//get response
 	response, err := client.Do(request)
 	if err != nil {
+		logger.Log.Error(err.Error())
 		return
 	}
 	response.Body.Close()

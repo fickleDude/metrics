@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/fickleDude/metrics.git/internal/logger"
 	models "github.com/fickleDude/metrics.git/internal/model"
 	"github.com/fickleDude/metrics.git/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -29,7 +30,7 @@ func (h *MemStorageHandler) UpdateMetricJSONHandler(res http.ResponseWriter, req
 	//decode request
 	var metric models.Metrics
 	if err := json.NewDecoder(req.Body).Decode(&metric); err != nil {
-		//log
+		logger.Log.Error(err.Error())
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -56,6 +57,7 @@ func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *ht
 	case "counter":
 		memValueInt, err := strconv.ParseInt(memValue, 10, 0)
 		if err != nil {
+			logger.Log.Error(err.Error())
 			res.WriteHeader(http.StatusBadRequest) //некорректное значение
 			return
 		}
@@ -65,6 +67,7 @@ func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *ht
 	case "gauge":
 		memValueFloat, err := strconv.ParseFloat(memValue, 64)
 		if err != nil {
+			logger.Log.Error(err.Error())
 			res.WriteHeader(http.StatusBadRequest) //некорректное значение
 			return
 		}
@@ -85,7 +88,7 @@ func (h *MemStorageHandler) GetMetricJSONHandler(res http.ResponseWriter, req *h
 	//decode request
 	var metric models.Metrics
 	if err := json.NewDecoder(req.Body).Decode(&metric); err != nil {
-		//log
+		logger.Log.Error(err.Error())
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -99,7 +102,7 @@ func (h *MemStorageHandler) GetMetricJSONHandler(res http.ResponseWriter, req *h
 	res.Header().Set("Content-Type", "application/json")
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(repoMetric); err != nil {
-		//log
+		logger.Log.Error(err.Error())
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
