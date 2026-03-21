@@ -36,9 +36,9 @@ func (h *MemStorageHandler) UpdateMetricJsonHandler(res http.ResponseWriter, req
 	//update repository data
 	switch metric.MType {
 	case "counter":
-		h.service.UpdateCount(metric.ID, *metric.Delta)
+		h.service.UpdateCount(metric.ID, metric.Delta)
 	case "gauge":
-		h.service.UpdateGauge(metric.ID, *metric.Value)
+		h.service.UpdateGauge(metric.ID, metric.Value)
 	default:
 		res.WriteHeader(http.StatusBadRequest) //некорректный тип метрики
 		return
@@ -59,7 +59,7 @@ func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *ht
 			res.WriteHeader(http.StatusBadRequest) //некорректное значение
 			return
 		}
-		h.service.UpdateCount(memName, memValueInt)
+		h.service.UpdateCount(memName, &memValueInt)
 		res.Write([]byte(fmt.Sprintf("metric %s updated. value = %d", memName, memValueInt)))
 
 	case "gauge":
@@ -68,7 +68,7 @@ func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *ht
 			res.WriteHeader(http.StatusBadRequest) //некорректное значение
 			return
 		}
-		h.service.UpdateGauge(memName, memValueFloat)
+		h.service.UpdateGauge(memName, &memValueFloat)
 		res.Write([]byte(fmt.Sprintf("metric %s updated. value = %f", memName, memValueFloat)))
 	default:
 		res.WriteHeader(http.StatusBadRequest) //некорректный тип метрики

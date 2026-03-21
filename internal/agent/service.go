@@ -1,77 +1,79 @@
 package agent
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"io"
 	"math/rand/v2"
 	"net/http"
-	"os"
 	"runtime"
 	"sync"
 	"time"
+
+	models "github.com/fickleDude/metrics.git/internal/model"
 )
 
 type Task struct {
+	Type  string
 	Value interface{}
-	URL   string
 }
 
 type ClientService struct {
 	mutex          sync.Mutex
 	memStat        *runtime.MemStats
 	client         http.Client
-	tasks          []Task
-	PollInterval   int
-	ReportInterval int
-	//extra metrics
-	pollCount   *uint64
-	randomValue *float64
+	baseURL        string
+	tasks          map[string]*Task
+	pollInterval   int
+	reportInterval int
 }
 
 func Init(serverAddress string, pollInterval int, reportInterval int) *ClientService {
-	stats := runtime.MemStats{}
-	var count uint64
-	var random float64
-	baseURL := fmt.Sprintf("http://%s/update", serverAddress)
-	return &ClientService{memStat: &stats,
-		tasks: []Task{
-			{Value: &stats.Alloc, URL: baseURL + "/gauge/Alloc"},
-			{Value: &stats.BuckHashSys, URL: baseURL + "/gauge/BuckHashSys"},
-			{Value: &stats.Frees, URL: baseURL + "/gauge/Frees"},
-			{Value: &stats.GCCPUFraction, URL: baseURL + "/gauge/GCCPUFraction"},
-			{Value: &stats.GCSys, URL: baseURL + "/gauge/GCSys"},
-			{Value: &stats.HeapAlloc, URL: baseURL + "/gauge/HeapAlloc"},
-			{Value: &stats.HeapIdle, URL: baseURL + "/gauge/HeapIdle"},
-			{Value: &stats.HeapInuse, URL: baseURL + "/gauge/HeapInuse"},
-			{Value: &stats.HeapObjects, URL: baseURL + "/gauge/HeapObjects"},
-			{Value: &stats.HeapReleased, URL: baseURL + "/gauge/HeapReleased"},
-			{Value: &stats.HeapSys, URL: baseURL + "/gauge/HeapSys"},
-			{Value: &stats.LastGC, URL: baseURL + "/gauge/LastGC"},
-			{Value: &stats.Lookups, URL: baseURL + "/gauge/Lookups"},
-			{Value: &stats.MCacheInuse, URL: baseURL + "/gauge/MCacheInuse"},
-			{Value: &stats.MCacheSys, URL: baseURL + "/gauge/MCacheSys"},
-			{Value: &stats.MSpanInuse, URL: baseURL + "/gauge/MSpanInuse"},
-			{Value: &stats.MSpanSys, URL: baseURL + "/gauge/MSpanSys"},
-			{Value: &stats.Mallocs, URL: baseURL + "/gauge/Mallocs"},
-			{Value: &stats.NextGC, URL: baseURL + "/gauge/NextGC"},
-			{Value: &stats.NumForcedGC, URL: baseURL + "/gauge/NumForcedGC"},
-			{Value: &stats.NumGC, URL: baseURL + "/gauge/NumGC"},
-			{Value: &stats.OtherSys, URL: baseURL + "/gauge/OtherSys"},
-			{Value: &stats.PauseTotalNs, URL: baseURL + "/gauge/PauseTotalNs"},
-			{Value: &stats.StackInuse, URL: baseURL + "/gauge/StackInuse"},
-			{Value: &stats.StackSys, URL: baseURL + "/gauge/StackSys"},
-			{Value: &stats.Sys, URL: baseURL + "/gauge/Sys"},
-			{Value: &stats.TotalAlloc, URL: baseURL + "/gauge/TotalAlloc"},
-			{Value: &count, URL: baseURL + "/counter/PollCount"},
-			{Value: &random, URL: baseURL + "/gauge/RandomValue"},
+	//get initial stat
+	memStat := runtime.MemStats{}
+	runtime.ReadMemStats(&memStat)
+	var count int64 = 0
+	var random float64 = rand.Float64()
+
+	return &ClientService{
+		mutex:   sync.Mutex{},
+		memStat: &memStat,
+		client:  http.Client{},
+		baseURL: fmt.Sprintf("http://%s/update", serverAddress),
+		tasks: map[string]*Task{
+			"Alloc":         {Value: &memStat.Alloc, Type: "gauge"},
+			"BuckHashSys":   {Value: &memStat.BuckHashSys, Type: "gauge"},
+			"Frees":         {Value: &memStat.Frees, Type: "gauge"},
+			"GCCPUFraction": {Value: &memStat.GCCPUFraction, Type: "gauge"},
+			"GCSys":         {Value: &memStat.GCSys, Type: "gauge"},
+			"HeapAlloc":     {Value: &memStat.HeapAlloc, Type: "gauge"},
+			"HeapIdle":      {Value: &memStat.HeapIdle, Type: "gauge"},
+			"HeapInuse":     {Value: &memStat.HeapInuse, Type: "gauge"},
+			"HeapObjects":   {Value: &memStat.HeapObjects, Type: "gauge"},
+			"HeapReleased":  {Value: &memStat.HeapReleased, Type: "gauge"},
+			"HeapSys":       {Value: &memStat.HeapSys, Type: "gauge"},
+			"LastGC":        {Value: &memStat.LastGC, Type: "gauge"},
+			"Lookups":       {Value: &memStat.Lookups, Type: "gauge"},
+			"MCacheInuse":   {Value: &memStat.MCacheInuse, Type: "gauge"},
+			"MCacheSys":     {Value: &memStat.MCacheSys, Type: "gauge"},
+			"MSpanInuse":    {Value: &memStat.MSpanInuse, Type: "gauge"},
+			"MSpanSys":      {Value: &memStat.MSpanSys, Type: "gauge"},
+			"Mallocs":       {Value: &memStat.Mallocs, Type: "gauge"},
+			"NextGC":        {Value: &memStat.NextGC, Type: "gauge"},
+			"NumForcedGC":   {Value: &memStat.NumForcedGC, Type: "gauge"},
+			"NumGC":         {Value: &memStat.NumGC, Type: "gauge"},
+			"OtherSys":      {Value: &memStat.OtherSys, Type: "gauge"},
+			"PauseTotalNs":  {Value: &memStat.PauseTotalNs, Type: "gauge"},
+			"StackInuse":    {Value: &memStat.StackInuse, Type: "gauge"},
+			"StackSys":      {Value: &memStat.StackSys, Type: "gauge"},
+			"Sys":           {Value: &memStat.Sys, Type: "gauge"},
+			"TotalAlloc":    {Value: &memStat.TotalAlloc, Type: "gauge"},
+			"PollCount":     {Value: count, Type: "counter"},
+			"RandomValue":   {Value: random, Type: "gauge"},
 		},
-		client: http.Client{},
-		//mutex:          sync.Mutex{},
-		pollCount:      &count,
-		randomValue:    &random,
-		PollInterval:   pollInterval,
-		ReportInterval: reportInterval,
+		pollInterval:   pollInterval,
+		reportInterval: reportInterval,
 	}
 }
 
@@ -82,39 +84,41 @@ func (c *ClientService) Update(ctx context.Context) {
 			return
 		default:
 			c.mutex.Lock()
+			//read stat
 			runtime.ReadMemStats(c.memStat)
-			*c.pollCount += 1
-			*c.randomValue = rand.Float64()
-			fmt.Println("metrics updated")
+			//update metric
+			// c.metrics[0].Value = float64(c.memStat.Alloc)
+			c.tasks["PollCount"].Value = c.tasks["PollCount"].Value.(int64) + 1
+			c.tasks["RandomValue"].Value = rand.Float64()
+			//*c.randomValue = rand.Float64()
 			c.mutex.Unlock()
-
-			time.Sleep(time.Duration(c.PollInterval) * time.Second)
+			//sleep
+			time.Sleep(time.Duration(c.pollInterval) * time.Second)
 		}
 	}
 
 }
 
-func (t *Task) sendTask(client http.Client) {
-	var target string
-	if v, ok := t.Value.(*uint64); ok {
-		target = fmt.Sprintf("%s/%d", t.URL, *v)
-	} else if v, ok := t.Value.(*float64); ok {
-		target = fmt.Sprintf("%s/%f", t.URL, *v)
-	} else {
-		target = fmt.Sprintf("%s/unknown", t.URL)
+func sendTask(client http.Client, target string, metric models.Metrics) {
+	//encode response
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(metric); err != nil {
+		//log
+		return
 	}
-
-	request, err := http.NewRequest(http.MethodPost, target, nil)
+	//create request
+	request, err := http.NewRequest(http.MethodPost, target, &buf)
 	if err != nil {
 		return
 	}
+	request.Header.Set("Content-Type", "application/json")
+
+	//get response
 	response, err := client.Do(request)
 	if err != nil {
 		return
 	}
-	io.Copy(os.Stdout, response.Body) // вывод ответа в консоль
 	response.Body.Close()
-	fmt.Printf("\nposted %s\n", target)
 }
 
 func (c *ClientService) Post(ctx context.Context) {
@@ -124,11 +128,41 @@ func (c *ClientService) Post(ctx context.Context) {
 			return
 		default:
 			c.mutex.Lock()
-			for _, t := range c.tasks {
-				t.sendTask(c.client)
+			for k, v := range c.tasks {
+				//create metric
+				var metric models.Metrics
+				metric.ID = k
+				metric.MType = v.Type
+				switch metric.MType {
+				case "gauge":
+					if value, ok := v.Value.(*float64); ok {
+						metric.Value = value
+					} else if value, ok := v.Value.(*uint64); ok {
+						convert := float64(*value)
+						metric.Value = &convert
+					} else if value, ok := v.Value.(*uint32); ok {
+						convert := float64(*value)
+						metric.Value = &convert
+					} else if value, ok := v.Value.(float64); ok {
+						metric.Value = &value
+					} else {
+						//log
+						fmt.Println(k)
+						continue
+					}
+
+				case "counter":
+					value, _ := v.Value.(int64)
+					metric.Delta = &value
+				default:
+					//log
+					continue
+				}
+				//make request
+				sendTask(c.client, c.baseURL, metric)
 			}
 			c.mutex.Unlock()
-			time.Sleep(time.Duration(c.ReportInterval) * time.Second)
+			time.Sleep(time.Duration(c.reportInterval) * time.Second)
 		}
 	}
 

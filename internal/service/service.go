@@ -8,8 +8,8 @@ import (
 )
 
 type MemStorageInterface interface {
-	UpdateCount(name string, delta int64)
-	UpdateGauge(name string, value float64)
+	UpdateCount(name string, delta *int64)
+	UpdateGauge(name string, value *float64)
 	GetMetricValue(name string, mType string) string
 	GetMetricValues() string
 	GetMetric(name string, mType string) *models.Metrics
@@ -22,11 +22,11 @@ type MemStorageService struct {
 func NewMemStorageService(repository repository.MemStorageInterface) *MemStorageService {
 	return &MemStorageService{repository: repository}
 }
-func (r *MemStorageService) UpdateCount(name string, delta int64) {
+func (r *MemStorageService) UpdateCount(name string, delta *int64) {
 	r.repository.UpdateCount(name, delta)
 }
 
-func (r *MemStorageService) UpdateGauge(name string, value float64) {
+func (r *MemStorageService) UpdateGauge(name string, value *float64) {
 	r.repository.UpdateGauge(name, value)
 }
 
