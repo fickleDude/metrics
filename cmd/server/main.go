@@ -6,6 +6,7 @@ import (
 	"github.com/fickleDude/metrics.git/internal/config"
 	"github.com/fickleDude/metrics.git/internal/handler"
 	"github.com/fickleDude/metrics.git/internal/logger"
+	"github.com/fickleDude/metrics.git/internal/middleware"
 	"github.com/fickleDude/metrics.git/internal/repository"
 	"github.com/fickleDude/metrics.git/internal/service"
 
@@ -33,16 +34,19 @@ func main() {
 
 	//router
 	r := chi.NewRouter()
-	// r.Get("/", middleware.RequestLogger(handler.GetMetricsHandler))
-	// r.Get("/value/{type}/{name}", middleware.RequestLogger(handler.GetMetricHandler))
-	// r.Post("/update", handler.UpdateMetricJsonHandler)
-	r.Route("/", func(r chi.Router) {
-		r.Post("/value/", handler.GetMetricJSONHandler)
-		r.Post("/update/", handler.UpdateMetricJSONHandler)
-	})
-	// r.Post("/value/", handler.GetMetricJsonHandler)
-	// r.Post("/update/{type}/{name}/{value}", middleware.RequestLogger(handler.UpdateMetricHandler))
+	// r.Use(middleware.RequestLogger)
 
+	r.Route("/", func(r chi.Router) {
+		r.Get("/", middleware.RequestLogger(handler.GetMetricsHandler))
+		r.Route("/value", func(r chi.Router) {
+			r.Post("/", middleware.RequestLogger(handler.GetMetricJSONHandler))
+			r.Get("/{type}/{name}", middleware.RequestLogger(handler.GetMetricHandler))
+		})
+		r.Route("/update", func(r chi.Router) {
+			r.Post("/", middleware.RequestLogger(handler.UpdateMetricJSONHandler))
+			r.Post("/{type}/{name}/{value}", middleware.RequestLogger(handler.UpdateMetricHandler))
+		})
+	})
 	err := http.ListenAndServe(cfg.RunAddr(), r)
 	if err != nil {
 		panic(err)
