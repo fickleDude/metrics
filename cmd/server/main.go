@@ -34,19 +34,19 @@ func main() {
 
 	//router
 	r := chi.NewRouter()
-	// r.Use(middleware.RequestLogger)
-
+	r.Use(middleware.RequestLogger)
 	r.Route("/", func(r chi.Router) {
-		r.Get("/", middleware.RequestLogger(handler.GetMetricsHandler))
+		r.Get("/", handler.GetMetricsHandler)
 		r.Route("/value", func(r chi.Router) {
-			r.Post("/", middleware.RequestLogger(handler.GetMetricJSONHandler))
-			r.Get("/{type}/{name}", middleware.RequestLogger(handler.GetMetricHandler))
+			r.Post("/", handler.GetMetricJSONHandler)
+			r.Get("/{type}/{name}", handler.GetMetricHandler)
 		})
 		r.Route("/update", func(r chi.Router) {
-			r.Post("/", middleware.RequestLogger(handler.UpdateMetricJSONHandler))
-			r.Post("/{type}/{name}/{value}", middleware.RequestLogger(handler.UpdateMetricHandler))
+			r.Post("/", handler.UpdateMetricJSONHandler)
+			r.Post("/{type}/{name}/{value}", handler.UpdateMetricHandler)
 		})
 	})
+	//start server
 	err := http.ListenAndServe(cfg.RunAddr(), r)
 	if err != nil {
 		panic(err)

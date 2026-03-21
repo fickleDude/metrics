@@ -36,7 +36,7 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode // захватываем код статуса
 }
 
-func RequestLogger(h http.HandlerFunc) http.HandlerFunc {
+func RequestLogger(h http.Handler) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		//gather info
 		start := time.Now()

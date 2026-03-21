@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"strconv"
 )
 
@@ -37,5 +38,33 @@ func (m *Metrics) GetValue() string {
 	default:
 		return "значение не задано"
 	}
+}
 
+func (m *Metrics) SetValue(value interface{}) error {
+	switch m.MType {
+	case "gauge":
+		if v, ok := value.(*float64); ok {
+			m.Value = v
+		} else if v, ok := value.(*uint64); ok {
+			convert := float64(*v)
+			m.Value = &convert
+		} else if v, ok := value.(*uint32); ok {
+			convert := float64(*v)
+			m.Value = &convert
+		} else if v, ok := value.(float64); ok {
+			m.Value = &v
+		} else {
+			return fmt.Errorf("не получилось преобразовать тип interface{} в тип float64")
+		}
+	case "counter":
+		if v, ok := value.(*int64); ok {
+			m.Delta = v
+		} else {
+			return fmt.Errorf("не получилось преобразовать тип interface{} в тип int64")
+		}
+	default:
+		return fmt.Errorf("неизвестный тип метрики %s", m.MType)
+
+	}
+	return nil
 }

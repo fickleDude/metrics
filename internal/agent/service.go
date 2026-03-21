@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fickleDude/metrics.git/internal/logger"
 	models "github.com/fickleDude/metrics.git/internal/model"
 )
 
@@ -91,10 +92,9 @@ func (c *ClientService) Update(ctx context.Context) {
 			//read stat
 			runtime.ReadMemStats(c.memStat)
 			//update metric
-			// c.metrics[0].Value = float64(c.memStat.Alloc)
 			*c.pollCount += 1
 			*c.randomValue = rand.Float64()
-			//*c.randomValue = rand.Float64()
+
 			c.mutex.Unlock()
 			//sleep
 			time.Sleep(time.Duration(c.pollInterval) * time.Second)
@@ -137,29 +137,9 @@ func (c *ClientService) Post(ctx context.Context) {
 				var metric models.Metrics
 				metric.ID = k
 				metric.MType = v.Type
-				switch metric.MType {
-				case "gauge":
-					if value, ok := v.Value.(*float64); ok {
-						metric.Value = value
-					} else if value, ok := v.Value.(*uint64); ok {
-						convert := float64(*value)
-						metric.Value = &convert
-					} else if value, ok := v.Value.(*uint32); ok {
-						convert := float64(*value)
-						metric.Value = &convert
-					} else if value, ok := v.Value.(float64); ok {
-						metric.Value = &value
-					} else {
-						//log
-						fmt.Println(k)
-						continue
-					}
-
-				case "counter":
-					value, _ := v.Value.(*int64)
-					metric.Delta = value
-				default:
-					//log
+				err := metric.SetValue(v.Value)
+				if err != nil {
+					logger.Log.Error(err.Error())
 					continue
 				}
 				//make request
