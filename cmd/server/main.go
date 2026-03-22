@@ -35,6 +35,8 @@ func main() {
 	//router
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger)
+	r.Use(middleware.GzipWriter)
+	r.Use(middleware.GzipReader)
 	r.Route("/", func(r chi.Router) {
 		r.Get("/", handler.GetMetricsHandler)
 		r.Route("/value", func(r chi.Router) {

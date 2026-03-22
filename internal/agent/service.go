@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -110,13 +111,18 @@ func sendTask(client http.Client, target string, metric models.Metrics) {
 		logger.Log.Error(err.Error())
 		return
 	}
+	//gzip
+	var gzipBuf bytes.Buffer
+	gz := gzip.NewWriter(&gzipBuf)
+	_, err := gz.Write(buf.Bytes())
 	//create request
-	request, err := http.NewRequest(http.MethodPost, target, &buf)
+	request, err := http.NewRequest(http.MethodPost, target, &gzipBuf)
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return
 	}
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Encoding", "gzip")
 
 	//get response
 	response, err := client.Do(request)
