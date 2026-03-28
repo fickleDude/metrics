@@ -112,11 +112,12 @@ func sendTask(client http.Client, target string, metric models.Metrics) {
 		return
 	}
 	//gzip
-	var gzipBuf bytes.Buffer
-	gz := gzip.NewWriter(&gzipBuf)
+	var gzBuf bytes.Buffer
+	gz := gzip.NewWriter(&gzBuf)
 	_, err := gz.Write(buf.Bytes())
+	gz.Close()
 	//create request
-	request, err := http.NewRequest(http.MethodPost, target, &gzipBuf)
+	request, err := http.NewRequest(http.MethodPost, target, &gzBuf)
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return

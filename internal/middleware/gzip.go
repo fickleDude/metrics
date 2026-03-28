@@ -14,8 +14,15 @@ type gzipWriter struct {
 	Writer io.Writer
 }
 
-func (w gzipWriter) Write(b []byte) (int, error) {
+func (w *gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
+}
+
+func (w *gzipWriter) WriteHeader(statusCode int) {
+	if statusCode < 300 {
+		w.Header().Set("Content-Encoding", "gzip")
+	}
+	w.WriteHeader(statusCode)
 }
 
 func GzipWriter(next http.Handler) http.Handler {
@@ -24,29 +31,28 @@ func GzipWriter(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		//с помощью gzip данные будут записываться в сжатом виде в w http.ResponseWriter
 		gzip, err := gzip.NewWriterLevel(w, flate.BestCompression)
 		if err != nil {
 			io.WriteString(w, err.Error())
 			return
 		}
 		defer gzip.Close()
-
-		w.Header().Set("Content-Encoding", "gzip")
-		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gzip}, r)
+		next.ServeHTTP(&gzipWriter{ResponseWriter: w, Writer: gzip}, r)
 	})
 }
 
 type gzipReader struct {
-	http.Request
-	Reader io.ReadCloser
-}
-
-func (r *gzipReader) Read(p []byte) (n int, err error) {
-	return r.Reader.Read(p)
+	io.ReadCloser
+	Reader *gzip.Reader
 }
 
 func (r *gzipReader) Close() error {
 	return r.Reader.Close()
+}
+
+func (r gzipReader) Read(p []byte) (n int, err error) {
+	return r.Reader.Read(p)
 }
 
 func GzipReader(next http.Handler) http.Handler {
@@ -61,11 +67,9 @@ func GzipReader(next http.Handler) http.Handler {
 			return
 		}
 		defer gzip.Close()
-		body, err := io.ReadAll(gzip)
-		if err != nil {
-			io.WriteString(w, err.Error())
-			return
-		}
-		w.Write(body)
+
+		r.Body = &gzipReader{ReadCloser: r.Body, Reader: gzip}
+		r.Header.Set("Content-Type", "application/json")
+		next.ServeHTTP(w, r)
 	})
 }
