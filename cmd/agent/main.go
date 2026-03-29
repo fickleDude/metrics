@@ -21,7 +21,7 @@ func main() {
 
 	//config
 	cfg := config.NewConfig()
-	cfg.ParseFlags()
+	cfg.ParseFlags("agent")
 	cfg.ParseEnv()
 
 	//инициализируем метрики

@@ -64,60 +64,75 @@ func checkRunAddr(addr string) error {
 	return nil
 }
 
-func (c *Config) ParseEnv() {
+func (c *Config) ParseEnv(binary string) {
 	envAddr := os.Getenv("ADDRESS")
 	err := checkRunAddr(envAddr)
 	if err == nil {
 		c.runAddr = envAddr
 	}
+	switch binary {
+	case "server":
+		envStore := os.Getenv("STORE_INTERVAL")
+		envStoreInt, err := strconv.Atoi(envStore)
+		if err == nil {
+			c.storeInterval = envStoreInt
+		}
 
-	envReport := os.Getenv("REPORT_INTERVAL")
-	envReportInt, err := strconv.Atoi(envReport)
-	if err == nil {
-		c.reportInterval = envReportInt
+		envStorePath := os.Getenv("FILE_STORAGE_PATH")
+		if envStorePath != "" {
+			c.fileStoragePath = envStorePath
+		}
+
+		envRestore := os.Getenv("RESTORE")
+		envRestoreBool, err := strconv.ParseBool(envRestore)
+		if err == nil {
+			c.restore = envRestoreBool
+		}
+
+	case "agent":
+		envReport := os.Getenv("REPORT_INTERVAL")
+		envReportInt, err := strconv.Atoi(envReport)
+		if err == nil {
+			c.reportInterval = envReportInt
+		}
+
+		envPoll := os.Getenv("POLL_INTERVAL")
+		envPollInt, err := strconv.Atoi(envPoll)
+		if err == nil {
+			c.pollInterval = envPollInt
+		}
 	}
 
-	envPoll := os.Getenv("POLL_INTERVAL")
-	envPollInt, err := strconv.Atoi(envPoll)
-	if err == nil {
-		c.pollInterval = envPollInt
-	}
-
-	envStore := os.Getenv("STORE_INTERVAL")
-	envStoreInt, err := strconv.Atoi(envStore)
-	if err == nil {
-		c.storeInterval = envStoreInt
-	}
-
-	envStorePath := os.Getenv("FILE_STORAGE_PATH")
-	if envStorePath != "" {
-		c.fileStoragePath = envStorePath
-	}
-
-	envRestore := os.Getenv("RESTORE")
-	envRestoreBool, err := strconv.ParseBool(envRestore)
-	if err == nil {
-		c.restore = envRestoreBool
-	}
 }
 
-func (c *Config) ParseFlags() {
-	//both
-	flag.Func("a", "адрес и порт на котором запущен сервер", func(flagAddr string) error {
-		err := checkRunAddr(flagAddr)
-		if err == nil {
-			c.runAddr = flagAddr
+func (c *Config) ParseFlags(binary string) {
+	switch binary {
+	case "server":
+		server := flag.NewFlagSet("server", flag.ExitOnError)
+		server.Func("a", "адрес и порт на котором запущен сервер", func(flagAddr string) error {
+			err := checkRunAddr(flagAddr)
+			if err == nil {
+				c.runAddr = flagAddr
 
-		}
-		return nil
-	})
-	//agent
-	flag.IntVar(&c.reportInterval, "ri", 10, "частота отправки метрик в секундах")
-	flag.IntVar(&c.pollInterval, "p", 2, "частота опроса метрик в секундах")
-	//server
-	flag.IntVar(&c.storeInterval, "i", 300, "частота сохранения показаний метрик в файл в секундах")
-	flag.StringVar(&c.fileStoragePath, "f", "metrics.txt", "путь до файла для сохранения показаний метрик")
-	flag.BoolVar(&c.restore, "r", false, "определяет, нужно ли загружать значения из файла при старте сервера")
+			}
+			return nil
+		})
+		server.IntVar(&c.storeInterval, "i", 300, "частота сохранения показаний метрик в файл в секундах")
+		server.StringVar(&c.fileStoragePath, "f", "metrics.txt", "путь до файла для сохранения показаний метрик")
+		server.BoolVar(&c.restore, "r", false, "определяет, нужно ли загружать значения из файла при старте сервера")
+		server.Parse(os.Args[1:])
+	case "agent":
+		agent := flag.NewFlagSet("agent", flag.ExitOnError)
+		agent.Func("a", "адрес и порт на котором запущен сервер", func(flagAddr string) error {
+			err := checkRunAddr(flagAddr)
+			if err == nil {
+				c.runAddr = flagAddr
 
-	flag.Parse()
+			}
+			return nil
+		})
+		agent.IntVar(&c.reportInterval, "r", 10, "частота отправки метрик в секундах")
+		agent.IntVar(&c.pollInterval, "p", 2, "частота опроса метрик в секундах")
+		agent.Parse(os.Args[1:])
+	}
 }

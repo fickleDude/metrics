@@ -51,7 +51,7 @@ func main() {
 
 	//config
 	cfg := config.NewConfig()
-	cfg.ParseFlags()
+	cfg.ParseFlags("server")
 	cfg.ParseEnv()
 
 	//init logger
