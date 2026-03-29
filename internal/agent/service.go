@@ -83,10 +83,11 @@ func Init(serverAddress string, pollInterval int, reportInterval int) *ClientSer
 	}
 }
 
-func (c *ClientService) Update(ctx context.Context) {
+func (c *ClientService) Update(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ctx.Done():
+			wg.Done()
 			return
 		default:
 			c.mutex.Lock()
@@ -138,14 +139,17 @@ func sendTask(client http.Client, target string, metric models.Metrics) {
 	response.Body.Close()
 }
 
-func (c *ClientService) Post(ctx context.Context) {
+func (c *ClientService) Post(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ctx.Done():
+			wg.Done()
 			return
 		default:
 			c.mutex.Lock()
-			for k, v := range c.tasks {
+			snap := c.tasks
+			c.mutex.Unlock()
+			for k, v := range snap {
 				//create metric
 				var metric models.Metrics
 				metric.ID = k
@@ -158,7 +162,6 @@ func (c *ClientService) Post(ctx context.Context) {
 				//make request
 				sendTask(c.client, c.baseURL, metric)
 			}
-			c.mutex.Unlock()
 			time.Sleep(time.Duration(c.reportInterval) * time.Second)
 		}
 	}
