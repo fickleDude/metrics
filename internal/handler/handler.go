@@ -121,7 +121,7 @@ func (h *MemStorageHandler) GetMetricHandler(res http.ResponseWriter, req *http.
 }
 
 func (h *MemStorageHandler) GetMetricsHTMLHandler(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "application/json")
+	res.Header().Set("Content-Type", "text/html")
 	memValues := h.service.GetMetricValues()
 	body := fmt.Sprintf(`<!DOCTYPE html>
 			<html lang="en">
