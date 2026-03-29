@@ -22,7 +22,7 @@ func main() {
 	//config
 	cfg := config.NewConfig()
 	cfg.ParseFlags("agent")
-	cfg.ParseEnv()
+	cfg.ParseEnv("agent")
 
 	//инициализируем метрики
 	service := agent.Init(cfg.RunAddr(), cfg.PollInterval(), cfg.ReportInterval())
