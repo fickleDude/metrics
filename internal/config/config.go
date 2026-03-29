@@ -9,16 +9,22 @@ import (
 )
 
 type Config struct {
-	runAddr        string
-	reportInterval int
-	pollInterval   int
+	runAddr         string
+	reportInterval  int
+	pollInterval    int
+	storeInterval   int
+	fileStoragePath string
+	restore         bool
 }
 
 func NewConfig() *Config {
 	return &Config{
-		runAddr:        "localhost:8080", //default value
-		reportInterval: 10,
-		pollInterval:   2,
+		runAddr:         "localhost:8080", //default value
+		reportInterval:  10,
+		pollInterval:    2,
+		storeInterval:   300,
+		fileStoragePath: "metrics.txt",
+		restore:         false,
 	}
 }
 
@@ -32,6 +38,18 @@ func (c *Config) ReportInterval() int {
 
 func (c *Config) PollInterval() int {
 	return c.pollInterval
+}
+
+func (c *Config) StoreInterval() int {
+	return c.storeInterval
+}
+
+func (c *Config) FileStoragePath() string {
+	return c.fileStoragePath
+}
+
+func (c *Config) Restore() bool {
+	return c.restore
 }
 
 func checkRunAddr(addr string) error {
@@ -65,9 +83,26 @@ func (c *Config) ParseEnv() {
 		c.pollInterval = envPollInt
 	}
 
+	envStore := os.Getenv("STORE_INTERVAL")
+	envStoreInt, err := strconv.Atoi(envStore)
+	if err == nil {
+		c.storeInterval = envStoreInt
+	}
+
+	envStorePath := os.Getenv("FILE_STORAGE_PATH")
+	if envStorePath != "" {
+		c.fileStoragePath = envStorePath
+	}
+
+	envRestore := os.Getenv("RESTORE")
+	envRestoreBool, err := strconv.ParseBool(envRestore)
+	if err == nil {
+		c.restore = envRestoreBool
+	}
 }
 
 func (c *Config) ParseFlags() {
+	//both
 	flag.Func("a", "адрес и порт на котором запущен сервер", func(flagAddr string) error {
 		err := checkRunAddr(flagAddr)
 		if err == nil {
@@ -76,8 +111,13 @@ func (c *Config) ParseFlags() {
 		}
 		return nil
 	})
-	flag.IntVar(&c.reportInterval, "r", 10, "частота отправки метрик в секундах")
+	//agent
+	flag.IntVar(&c.reportInterval, "ri", 10, "частота отправки метрик в секундах")
 	flag.IntVar(&c.pollInterval, "p", 2, "частота опроса метрик в секундах")
+	//server
+	flag.IntVar(&c.storeInterval, "i", 300, "частота сохранения показаний метрик в файл в секундах")
+	flag.StringVar(&c.fileStoragePath, "f", "metrics.txt", "путь до файла для сохранения показаний метрик")
+	flag.BoolVar(&c.restore, "r", false, "определяет, нужно ли загружать значения из файла при старте сервера")
 
 	flag.Parse()
 }

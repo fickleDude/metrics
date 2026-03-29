@@ -120,8 +120,8 @@ func (h *MemStorageHandler) GetMetricHandler(res http.ResponseWriter, req *http.
 	res.Write([]byte(memValue))
 }
 
-func (h *MemStorageHandler) GetMetricsHandler(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "text/html")
+func (h *MemStorageHandler) GetMetricsHTMLHandler(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "application/json")
 	memValues := h.service.GetMetricValues()
 	body := fmt.Sprintf(`<!DOCTYPE html>
 			<html lang="en">
@@ -138,4 +138,22 @@ func (h *MemStorageHandler) GetMetricsHandler(res http.ResponseWriter, req *http
 			</html>`, memValues)
 
 	fmt.Fprint(res, body)
+}
+
+func (h *MemStorageHandler) GetMetricsHandler(res http.ResponseWriter, req *http.Request) {
+	//get repository data
+	repoMetric := h.service.GetMetrics()
+	if repoMetric == nil {
+		res.WriteHeader(http.StatusNotFound)
+		return
+	}
+	//encode response
+	res.Header().Set("Content-Type", "application/json")
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(repoMetric); err != nil {
+		logger.Log.Error(err.Error())
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	buf.WriteTo(res)
 }

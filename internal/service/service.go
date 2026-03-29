@@ -13,6 +13,7 @@ type MemStorageInterface interface {
 	GetMetricValue(name string, mType string) string
 	GetMetricValues() string
 	GetMetric(name string, mType string) *models.Metrics
+	GetMetrics() []*models.Metrics
 }
 
 type MemStorageService struct {
@@ -49,4 +50,8 @@ func (r *MemStorageService) GetMetricValues() string {
 
 func (r *MemStorageService) GetMetric(name string, mType string) *models.Metrics {
 	return r.repository.GetMetric(name, mType)
+}
+
+func (r *MemStorageService) GetMetrics() []*models.Metrics {
+	return r.repository.GetMetrics()
 }

@@ -14,8 +14,8 @@ type MemStorage struct {
 	storage []*model.Metrics
 }
 
-func NewMemStorage() *MemStorage {
-	return &MemStorage{storage: []*model.Metrics{}}
+func NewMemStorage(initial []*model.Metrics) *MemStorage {
+	return &MemStorage{storage: initial}
 }
 
 func (s *MemStorage) UpdateCount(name string, delta *int64) {

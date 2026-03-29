@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	models "github.com/fickleDude/metrics.git/internal/model"
 	"github.com/fickleDude/metrics.git/internal/repository"
 	"github.com/fickleDude/metrics.git/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -14,7 +15,7 @@ import (
 
 func TestUpdateHandler(t *testing.T) {
 	//create handler
-	repository := repository.NewMemStorage()
+	repository := repository.NewMemStorage([]*models.Metrics{})
 	service := service.NewMemStorageService(repository)
 	handler := NewMemStorageHandler(service)
 	type request struct {
