@@ -8,7 +8,6 @@ import (
 
 	"github.com/fickleDude/metrics.git/internal/logger"
 	model "github.com/fickleDude/metrics.git/internal/model"
-	models "github.com/fickleDude/metrics.git/internal/model"
 )
 
 type MemStorageInterface interface {
@@ -62,7 +61,7 @@ func (s *MemStorage) GetMetrics() []*model.Metrics {
 
 // file
 func (s *MemStorage) LoadFromFile(filename string) error {
-	metrics := []*models.Metrics{}
+	metrics := []*model.Metrics{}
 	values, _ := os.ReadFile(filename)
 	reader := strings.NewReader(string(values))
 	if err := json.NewDecoder(reader).Decode(&metrics); err != nil {
