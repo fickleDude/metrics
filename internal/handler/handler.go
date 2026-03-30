@@ -139,21 +139,3 @@ func (h *MemStorageHandler) GetMetricsHTMLHandler(res http.ResponseWriter, req *
 
 	fmt.Fprint(res, body)
 }
-
-func (h *MemStorageHandler) GetMetricsHandler(res http.ResponseWriter, req *http.Request) {
-	//get repository data
-	repoMetric := h.service.GetMetrics()
-	if repoMetric == nil {
-		res.WriteHeader(http.StatusNotFound)
-		return
-	}
-	//encode response
-	res.Header().Set("Content-Type", "application/json")
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(repoMetric); err != nil {
-		logger.Log.Error(err.Error())
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	buf.WriteTo(res)
-}
