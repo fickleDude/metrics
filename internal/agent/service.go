@@ -28,10 +28,10 @@ type ClientService struct {
 	baseURL string
 	tasks   map[string]*Task
 	//extra
-	pollCount      *int64
-	randomValue    *float64
-	pollInterval   int
-	reportInterval int
+	pollCount    *int64
+	randomValue  *float64
+	pollTicker   *time.Ticker
+	reportTicker *time.Ticker
 }
 
 func Init(serverAddress string, pollInterval int, reportInterval int) *ClientService {
@@ -76,10 +76,10 @@ func Init(serverAddress string, pollInterval int, reportInterval int) *ClientSer
 			"PollCount":     {Value: &count, Type: "counter"},
 			"RandomValue":   {Value: &random, Type: "gauge"},
 		},
-		pollInterval:   pollInterval,
-		reportInterval: reportInterval,
-		pollCount:      &count,
-		randomValue:    &random,
+		pollTicker:   time.NewTicker(time.Duration(pollInterval) * time.Second),
+		reportTicker: time.NewTicker(time.Duration(reportInterval) * time.Second),
+		pollCount:    &count,
+		randomValue:  &random,
 	}
 }
 
@@ -99,7 +99,7 @@ func (c *ClientService) Update(ctx context.Context, wg *sync.WaitGroup) {
 
 			c.mutex.Unlock()
 			//sleep
-			time.Sleep(time.Duration(c.pollInterval) * time.Second)
+			<-c.pollTicker.C
 		}
 	}
 
@@ -162,7 +162,7 @@ func (c *ClientService) Post(ctx context.Context, wg *sync.WaitGroup) {
 				//make request
 				sendTask(c.client, c.baseURL, metric)
 			}
-			time.Sleep(time.Duration(c.reportInterval) * time.Second)
+			<-c.reportTicker.C
 		}
 	}
 
