@@ -59,10 +59,11 @@ func main() {
 
 	//store metrics to file
 	if cfg.StoreInterval() > 0 {
+		ticker := time.NewTicker(time.Duration(cfg.StoreInterval()) * time.Second)
 		go func() {
 			for {
 				repository.LoadToFile(cfg.FileStoragePath())
-				time.Sleep(time.Duration(cfg.StoreInterval()) * time.Second)
+				<-ticker.C
 			}
 		}()
 	}
