@@ -139,3 +139,11 @@ func (h *MemStorageHandler) GetMetricsHTMLHandler(res http.ResponseWriter, req *
 
 	fmt.Fprint(res, body)
 }
+
+func (h *MemStorageHandler) GetDbConnectionHandler(res http.ResponseWriter, req *http.Request) {
+	ok := h.service.GetDbConnection()
+	if !ok {
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}

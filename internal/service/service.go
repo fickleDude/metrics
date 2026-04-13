@@ -1,10 +1,16 @@
 package service
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
+	"time"
 
+	"github.com/fickleDude/metrics.git/internal/logger"
 	models "github.com/fickleDude/metrics.git/internal/model"
 	repository "github.com/fickleDude/metrics.git/internal/repository"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type MemStorageInterface interface {
@@ -14,6 +20,7 @@ type MemStorageInterface interface {
 	GetMetricValues() string
 	GetMetric(name string, mType string) *models.Metrics
 	GetMetrics() []*models.Metrics
+	GetDbConnection() bool
 }
 
 type MemStorageService struct {
@@ -54,4 +61,20 @@ func (r *MemStorageService) GetMetric(name string, mType string) *models.Metrics
 
 func (r *MemStorageService) GetMetrics() []*models.Metrics {
 	return r.repository.GetMetrics()
+}
+
+func (r *MemStorageService) GetDbConnection() bool {
+	db, err := sql.Open("pgx", r.repository.GetDatabaseConnection())
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return false
+	}
+	defer db.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	if err = db.PingContext(ctx); err != nil {
+		logger.Log.Error(err.Error())
+		return false
+	}
+	return true
 }

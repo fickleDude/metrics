@@ -17,13 +17,19 @@ type MemStorageInterface interface {
 	GetMetrics() []*model.Metrics
 	LoadFromFile(filename string) error
 	LoadToFile(filename string) error
+	GetDatabaseConnection() string
 }
 type MemStorage struct {
-	storage []*model.Metrics
+	storage     []*model.Metrics
+	databaseDns string
 }
 
-func NewMemStorage() *MemStorage {
-	return &MemStorage{storage: []*model.Metrics{}}
+func NewMemStorage(databaseDns string) *MemStorage {
+	return &MemStorage{storage: []*model.Metrics{}, databaseDns: databaseDns}
+}
+
+func (s *MemStorage) GetDatabaseConnection() string {
+	return s.databaseDns
 }
 
 func (s *MemStorage) UpdateCount(name string, delta *int64) {

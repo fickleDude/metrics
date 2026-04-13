@@ -15,6 +15,7 @@ type Config struct {
 	storeInterval   int
 	fileStoragePath string
 	restore         bool
+	databaseDns     string
 }
 
 func NewConfig() *Config {
@@ -50,6 +51,10 @@ func (c *Config) FileStoragePath() string {
 
 func (c *Config) Restore() bool {
 	return c.restore
+}
+
+func (c *Config) DatabaseDns() string {
+	return c.databaseDns
 }
 
 func checkRunAddr(addr string) error {
@@ -89,6 +94,11 @@ func (c *Config) ParseEnv(binary string) {
 			c.restore = envRestoreBool
 		}
 
+		databaseDns := os.Getenv("DATABASE_DSN")
+		if databaseDns != "" {
+			c.databaseDns = databaseDns
+		}
+
 	case "agent":
 		envReport := os.Getenv("REPORT_INTERVAL")
 		envReportInt, err := strconv.Atoi(envReport)
@@ -120,6 +130,7 @@ func (c *Config) ParseFlags(binary string) {
 		server.IntVar(&c.storeInterval, "i", 300, "частота сохранения показаний метрик в файл в секундах")
 		server.StringVar(&c.fileStoragePath, "f", "metrics.txt", "путь до файла для сохранения показаний метрик")
 		server.BoolVar(&c.restore, "r", false, "определяет, нужно ли загружать значения из файла при старте сервера")
+		server.StringVar(&c.databaseDns, "d", "", "строка подключения к СУБД")
 		server.Parse(os.Args[1:])
 	case "agent":
 		agent := flag.NewFlagSet("agent", flag.ExitOnError)

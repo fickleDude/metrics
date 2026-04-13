@@ -29,7 +29,7 @@ func main() {
 	defer logger.Log.Sync()
 
 	//init
-	repository := repository.NewMemStorage()
+	repository := repository.NewMemStorage(cfg.DatabaseDns())
 	if cfg.Restore() {
 		repository.LoadFromFile(cfg.FileStoragePath())
 	}
@@ -46,6 +46,7 @@ func main() {
 	r.Use(middleware.RequestLogger)
 	r.Use(middleware.Gzip)
 	r.Route("/", func(r chi.Router) {
+		r.Get("/ping", handler.GetDbConnectionHandler)
 		r.Get("/", handler.GetMetricsHTMLHandler)
 		r.Route("/value", func(r chi.Router) {
 			r.Post("/", handler.GetMetricJSONHandler)
