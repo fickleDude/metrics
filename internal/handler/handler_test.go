@@ -14,7 +14,7 @@ import (
 
 func TestUpdateHandler(t *testing.T) {
 	//create handler
-	repository := repository.NewMemStorage()
+	repository := repository.NewMemStorage("")
 	service := service.NewMemStorageService(repository)
 	handler := NewMemStorageHandler(service)
 	type request struct {
