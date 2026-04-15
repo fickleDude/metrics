@@ -20,7 +20,7 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	//config
-	cfg := config.NewConfig()
+	cfg := config.GetConfig()
 	cfg.ParseFlags("agent")
 	cfg.ParseEnv("agent")
 

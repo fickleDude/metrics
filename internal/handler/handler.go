@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/fickleDude/metrics.git/internal/config/db"
 	"github.com/fickleDude/metrics.git/internal/logger"
 	models "github.com/fickleDude/metrics.git/internal/model"
 	"github.com/fickleDude/metrics.git/internal/service"
@@ -141,7 +142,7 @@ func (h *MemStorageHandler) GetMetricsHTMLHandler(res http.ResponseWriter, req *
 }
 
 func (h *MemStorageHandler) GetDbConnectionHandler(res http.ResponseWriter, req *http.Request) {
-	ok := h.service.GetDbConnection()
+	ok := db.TestConnection()
 	if !ok {
 		res.WriteHeader(http.StatusInternalServerError)
 		return

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type Config struct {
@@ -18,15 +19,23 @@ type Config struct {
 	databaseDns     string
 }
 
-func NewConfig() *Config {
-	return &Config{
-		runAddr:         "localhost:8080", //default value
-		reportInterval:  10,
-		pollInterval:    2,
-		storeInterval:   300,
-		fileStoragePath: "metrics.txt",
-		restore:         false,
-	}
+var (
+	instance *Config
+	once     sync.Once
+)
+
+func GetConfig() *Config {
+	once.Do(func() {
+		instance = &Config{
+			runAddr:        "localhost:8080", //default value
+			reportInterval: 10,
+			pollInterval:   2,
+			storeInterval:  300,
+			// fileStoragePath: "metrics.txt",
+			restore: false,
+		}
+	})
+	return instance
 }
 
 func (c *Config) RunAddr() string {

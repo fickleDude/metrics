@@ -2,9 +2,9 @@ package main
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/fickleDude/metrics.git/internal/config"
+	"github.com/fickleDude/metrics.git/internal/config/db"
 	"github.com/fickleDude/metrics.git/internal/handler"
 	"github.com/fickleDude/metrics.git/internal/logger"
 	"github.com/fickleDude/metrics.git/internal/middleware"
@@ -17,7 +17,7 @@ import (
 func main() {
 
 	//config
-	cfg := config.NewConfig()
+	cfg := config.GetConfig()
 	cfg.ParseFlags("server")
 	cfg.ParseEnv("server")
 
@@ -29,16 +29,19 @@ func main() {
 	defer logger.Log.Sync()
 
 	//init
-	repository := repository.NewMemStorage(cfg.DatabaseDns())
-	if cfg.Restore() {
-		repository.LoadFromFile(cfg.FileStoragePath())
+	var memRepository repository.MemStorageInterface
+	if cfg.DatabaseDns() != "" {
+		defer db.CloseDbConnection()
+		memRepository = repository.NewMemDatabaseStorage(db.GetDbConnection())
+	} else if cfg.FileStoragePath() != "" {
+		memRepository = repository.NewMemFileStorage(cfg.FileStoragePath(), cfg.Restore(), cfg.StoreInterval())
+		if cfg.StoreInterval() > 0 {
+			go memRepository.(*repository.MemFileStorage).SyncToFile()
+		}
+	} else {
+		memRepository = repository.NewMemStorage(nil)
 	}
-
-	var service s.MemStorageInterface
-	service = s.NewMemStorageService(repository)
-	if cfg.StoreInterval() == 0 {
-		service = s.NewMemStorageSyncService(*s.NewMemStorageService(repository), cfg.FileStoragePath())
-	}
+	service := s.NewMemStorageService(memRepository)
 	handler := handler.NewMemStorageHandler(service)
 
 	//router
@@ -57,17 +60,6 @@ func main() {
 			r.Post("/{type}/{name}/{value}", handler.UpdateMetricHandler)
 		})
 	})
-
-	//store metrics to file
-	if cfg.StoreInterval() > 0 {
-		ticker := time.NewTicker(time.Duration(cfg.StoreInterval()) * time.Second)
-		go func() {
-			for {
-				repository.LoadToFile(cfg.FileStoragePath())
-				<-ticker.C
-			}
-		}()
-	}
 
 	//start server
 	err := http.ListenAndServe(cfg.RunAddr(), r)
