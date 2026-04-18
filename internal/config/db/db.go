@@ -16,9 +16,9 @@ var (
 	once     sync.Once
 )
 
-func GetDbConnection() *sql.DB {
+func GetDBConnection() *sql.DB {
 	once.Do(func() {
-		dataSourceName := config.GetConfig(config.Server).DatabaseDns()
+		dataSourceName := config.GetConfig(config.Server).DatabaseDNS()
 		db, err := sql.Open("pgx", dataSourceName)
 		if err != nil {
 			panic(err.Error())
@@ -28,11 +28,11 @@ func GetDbConnection() *sql.DB {
 	return instance
 }
 
-func CloseDbConnection() error {
+func CloseDBConnection() error {
 	return instance.Close()
 }
 
-func TestConnection() bool {
+func TestDBConnection() bool {
 	if instance == nil {
 		return false
 	}

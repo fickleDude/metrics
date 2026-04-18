@@ -9,7 +9,6 @@ import (
 
 	"github.com/fickleDude/metrics.git/internal/logger"
 	model "github.com/fickleDude/metrics.git/internal/model"
-	models "github.com/fickleDude/metrics.git/internal/model"
 )
 
 type MemFileStorage struct {
@@ -64,7 +63,7 @@ func (s *MemFileStorage) SyncToFile() {
 }
 
 // file
-func loadFromFile(filename string) []*models.Metrics {
+func loadFromFile(filename string) []*model.Metrics {
 	metrics := []*model.Metrics{}
 	values, _ := os.ReadFile(filename)
 	reader := strings.NewReader(string(values))

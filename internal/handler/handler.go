@@ -142,7 +142,7 @@ func (h *MemStorageHandler) GetMetricsHTMLHandler(res http.ResponseWriter, req *
 }
 
 func (h *MemStorageHandler) GetDbConnectionHandler(res http.ResponseWriter, req *http.Request) {
-	ok := db.TestConnection()
+	ok := db.TestDBConnection()
 	if !ok {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
