@@ -17,9 +17,7 @@ import (
 func main() {
 
 	//config
-	cfg := config.GetConfig()
-	cfg.ParseFlags("server")
-	cfg.ParseEnv("server")
+	cfg := config.GetConfig(config.Server)
 
 	//init logger
 	logLevel := "info"

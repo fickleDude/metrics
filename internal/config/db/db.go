@@ -11,34 +11,34 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-type Database struct {
-	db *sql.DB
-}
-
 var (
-	instance *Database
+	instance *sql.DB
 	once     sync.Once
 )
 
 func GetDbConnection() *sql.DB {
 	once.Do(func() {
-		db, err := sql.Open("pgx", config.GetConfig().DatabaseDns())
+		dataSourceName := config.GetConfig(config.Server).DatabaseDns()
+		db, err := sql.Open("pgx", dataSourceName)
 		if err != nil {
 			panic(err.Error())
 		}
-		instance = &Database{db: db}
+		instance = db
 	})
-	return instance.db
+	return instance
 }
 
 func CloseDbConnection() error {
-	return instance.db.Close()
+	return instance.Close()
 }
 
 func TestConnection() bool {
+	if instance == nil {
+		return false
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	if err := instance.db.PingContext(ctx); err != nil {
+	if err := instance.PingContext(ctx); err != nil {
 		logger.Log.Error(err.Error())
 		return false
 	}

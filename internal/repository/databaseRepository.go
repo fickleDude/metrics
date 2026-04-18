@@ -2,9 +2,14 @@ package repository
 
 import (
 	"database/sql"
+	"log"
 
 	"github.com/fickleDude/metrics.git/internal/logger"
 	model "github.com/fickleDude/metrics.git/internal/model"
+
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 type MemDatabaseStorage struct {
@@ -13,7 +18,29 @@ type MemDatabaseStorage struct {
 }
 
 func NewMemDatabaseStorage(db *sql.DB) *MemDatabaseStorage {
-	return &MemDatabaseStorage{MemStorage: *NewMemStorage(nil), db: db}
+	repository := &MemDatabaseStorage{MemStorage: *NewMemStorage(nil), db: db}
+	repository.initDatabase()
+	return repository
+}
+
+func (s *MemDatabaseStorage) initDatabase() {
+	// Create a database driver instance
+	driver, err := postgres.WithInstance(s.db, &postgres.Config{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://D:/Download/yandex/metrics/migrations",
+		"postgres", driver,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		log.Fatal(err)
+	}
 }
 
 func (s *MemDatabaseStorage) UpdateCount(name string, delta *int64) {
@@ -81,7 +108,6 @@ func (s *MemDatabaseStorage) GetMetrics() []*model.Metrics {
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
 	for rows.Next() {
 		metric := model.Metrics{MType: model.Gauge}
 		err = rows.Scan(&metric.ID, &metric.Value)

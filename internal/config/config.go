@@ -9,6 +9,11 @@ import (
 	"sync"
 )
 
+const (
+	Server = "server"
+	Agent  = "agent"
+)
+
 type Config struct {
 	runAddr         string
 	reportInterval  int
@@ -20,22 +25,44 @@ type Config struct {
 }
 
 var (
-	instance *Config
-	once     sync.Once
+	agentConfig  *Config
+	serverConfig *Config
+	initServer   sync.Once
+	initAgent    sync.Once
 )
 
-func GetConfig() *Config {
-	once.Do(func() {
-		instance = &Config{
-			runAddr:        "localhost:8080", //default value
-			reportInterval: 10,
-			pollInterval:   2,
-			storeInterval:  300,
-			// fileStoragePath: "metrics.txt",
-			restore: false,
-		}
-	})
-	return instance
+func GetConfig(binary string) *Config {
+	switch binary {
+	case Server:
+		initServer.Do(func() {
+			serverConfig = &Config{
+				runAddr:        "localhost:8080",
+				reportInterval: 10,
+				pollInterval:   2,
+				storeInterval:  300,
+				restore:        false,
+			}
+			serverConfig.parseFlags(binary)
+			serverConfig.parseEnv(binary)
+		})
+		return serverConfig
+	case Agent:
+		initAgent.Do(func() {
+			agentConfig = &Config{
+				runAddr:        "localhost:8080",
+				reportInterval: 10,
+				pollInterval:   2,
+				storeInterval:  300,
+				restore:        false,
+			}
+			agentConfig.parseFlags(binary)
+			agentConfig.parseEnv(binary)
+		})
+		return agentConfig
+	default:
+		return &Config{}
+	}
+
 }
 
 func (c *Config) RunAddr() string {
@@ -78,7 +105,7 @@ func checkRunAddr(addr string) error {
 	return nil
 }
 
-func (c *Config) ParseEnv(binary string) {
+func (c *Config) parseEnv(binary string) {
 	envAddr := os.Getenv("ADDRESS")
 	err := checkRunAddr(envAddr)
 	if err == nil {
@@ -124,7 +151,7 @@ func (c *Config) ParseEnv(binary string) {
 
 }
 
-func (c *Config) ParseFlags(binary string) {
+func (c *Config) parseFlags(binary string) {
 	switch binary {
 	case "server":
 		server := flag.NewFlagSet("server", flag.ExitOnError)

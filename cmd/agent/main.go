@@ -20,9 +20,7 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	//config
-	cfg := config.GetConfig()
-	cfg.ParseFlags("agent")
-	cfg.ParseEnv("agent")
+	cfg := config.GetConfig(config.Agent)
 
 	//инициализируем метрики
 	service := agent.Init(cfg.RunAddr(), cfg.PollInterval(), cfg.ReportInterval())
