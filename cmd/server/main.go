@@ -53,6 +53,7 @@ func main() {
 			r.Post("/", handler.GetMetricJSONHandler)
 			r.Get("/{type}/{name}", handler.GetMetricHandler)
 		})
+		r.Post("/updates/", handler.UpdateMetricsJSONHandler)
 		r.Route("/update", func(r chi.Router) {
 			r.Post("/", handler.UpdateMetricJSONHandler)
 			r.Post("/{type}/{name}/{value}", handler.UpdateMetricHandler)

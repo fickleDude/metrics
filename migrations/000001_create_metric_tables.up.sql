@@ -6,6 +6,6 @@ CREATE TABLE IF NOT EXISTS gauge (
 
 CREATE TABLE IF NOT EXISTS counter (
     id     varchar,
-    delta    int,
+    delta    bigint,
     PRIMARY KEY (id)
 );

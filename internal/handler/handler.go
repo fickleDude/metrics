@@ -48,6 +48,34 @@ func (h *MemStorageHandler) UpdateMetricJSONHandler(res http.ResponseWriter, req
 
 }
 
+func (h *MemStorageHandler) UpdateMetricsJSONHandler(res http.ResponseWriter, req *http.Request) {
+	//check content type
+	if req.Header.Get("Content-Type") != "application/json" {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	//decode request
+	var metrics []models.Metrics
+	if err := json.NewDecoder(req.Body).Decode(&metrics); err != nil {
+		logger.Log.Error(err.Error())
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	for _, metric := range metrics {
+		//update repository data
+		switch metric.MType {
+		case "counter":
+			h.service.UpdateCount(metric.ID, metric.Delta)
+		case "gauge":
+			h.service.UpdateGauge(metric.ID, metric.Value)
+		default:
+			res.WriteHeader(http.StatusBadRequest) //некорректный тип метрики
+			return
+		}
+	}
+
+}
+
 func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *http.Request) {
 	memType := chi.URLParam(req, "type")
 	memName := chi.URLParam(req, "name")

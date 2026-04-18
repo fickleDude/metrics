@@ -44,7 +44,7 @@ func Init(serverAddress string, pollInterval int, reportInterval int) *ClientSer
 		mutex:   sync.Mutex{},
 		memStat: &memStat,
 		client:  http.Client{},
-		baseURL: fmt.Sprintf("http://%s/update/", serverAddress),
+		baseURL: fmt.Sprintf("http://%s/updates/", serverAddress),
 		tasks: map[string]*Task{
 			"Alloc":         {Value: &memStat.Alloc, Type: "gauge"},
 			"BuckHashSys":   {Value: &memStat.BuckHashSys, Type: "gauge"},
@@ -105,7 +105,7 @@ func (c *ClientService) Update(ctx context.Context, wg *sync.WaitGroup) {
 
 }
 
-func sendTask(client http.Client, target string, metric models.Metrics) {
+func sendTask(client http.Client, target string, metric []models.Metrics) {
 	//encode response
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(metric); err != nil {
@@ -149,6 +149,7 @@ func (c *ClientService) Post(ctx context.Context, wg *sync.WaitGroup) {
 			c.mutex.Lock()
 			snap := c.tasks
 			c.mutex.Unlock()
+			var metrics []models.Metrics
 			for k, v := range snap {
 				//create metric
 				var metric models.Metrics
@@ -159,9 +160,13 @@ func (c *ClientService) Post(ctx context.Context, wg *sync.WaitGroup) {
 					logger.Log.Error(err.Error())
 					continue
 				}
-				//make request
-				sendTask(c.client, c.baseURL, metric)
+				//add to request
+				metrics = append(metrics, metric)
 			}
+			if len(metrics) > 0 {
+				sendTask(c.client, c.baseURL, metrics)
+			}
+
 			<-c.reportTicker.C
 		}
 	}
