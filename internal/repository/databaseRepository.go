@@ -2,14 +2,12 @@ package repository
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	"github.com/fickleDude/metrics.git/internal/logger"
 	model "github.com/fickleDude/metrics.git/internal/model"
 
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/fickleDude/metrics.git/migrations"
 )
 
 type MemDatabaseStorage struct {
@@ -19,28 +17,19 @@ type MemDatabaseStorage struct {
 
 func NewMemDatabaseStorage(db *sql.DB) *MemDatabaseStorage {
 	repository := &MemDatabaseStorage{MemStorage: *NewMemStorage(nil), db: db}
-	repository.initDatabase()
+	err := repository.initDatabase()
+	if err != nil {
+		logger.Log.Error(err.Error())
+	}
 	return repository
 }
 
-func (s *MemDatabaseStorage) initDatabase() {
-	// Create a database driver instance
-	driver, err := postgres.WithInstance(s.db, &postgres.Config{})
-	if err != nil {
-		log.Fatal(err)
+func (s *MemDatabaseStorage) initDatabase() error {
+	m := migrations.GetMigrator()
+	if m != nil {
+		return m.MigrateUp()
 	}
-
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://D:/Download/yandex/metrics/migrations",
-		"postgres", driver,
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Fatal(err)
-	}
+	return fmt.Errorf("migration unavailable")
 }
 
 func (s *MemDatabaseStorage) UpdateCount(name string, delta *int64) {
