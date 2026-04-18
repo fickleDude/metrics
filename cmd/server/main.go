@@ -28,9 +28,9 @@ func main() {
 
 	//init
 	var memRepository repository.MemStorageInterface
-	if cfg.DatabaseDns() != "" {
-		defer db.CloseDbConnection()
-		memRepository = repository.NewMemDatabaseStorage(db.GetDbConnection())
+	if cfg.DatabaseDNS() != "" {
+		defer db.CloseDBConnection()
+		memRepository = repository.NewMemDatabaseStorage(db.GetDBConnection())
 	} else if cfg.FileStoragePath() != "" {
 		memRepository = repository.NewMemFileStorage(cfg.FileStoragePath(), cfg.Restore(), cfg.StoreInterval())
 		if cfg.StoreInterval() > 0 {
