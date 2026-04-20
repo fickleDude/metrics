@@ -43,13 +43,13 @@ func (m *Metrics) GetValue() string {
 func (m *Metrics) SetValue(value interface{}) error {
 	switch m.MType {
 	case "gauge":
-		if v, ok := value.(*float64); ok {
-			m.Value = v
-		} else if v, ok := value.(*uint64); ok {
-			convert := float64(*v)
+		if v, ok := value.(float64); ok {
+			m.Value = &v
+		} else if v, ok := value.(uint64); ok {
+			convert := float64(v)
 			m.Value = &convert
-		} else if v, ok := value.(*uint32); ok {
-			convert := float64(*v)
+		} else if v, ok := value.(uint32); ok {
+			convert := float64(v)
 			m.Value = &convert
 		} else if v, ok := value.(float64); ok {
 			m.Value = &v
@@ -57,8 +57,11 @@ func (m *Metrics) SetValue(value interface{}) error {
 			return fmt.Errorf("не получилось преобразовать тип interface{} в тип float64")
 		}
 	case "counter":
-		if v, ok := value.(*int64); ok {
-			m.Delta = v
+		if v, ok := value.(int64); ok {
+			m.Delta = &v
+		} else if v, ok := value.(int); ok {
+			convert := int64(v)
+			m.Delta = &convert
 		} else {
 			return fmt.Errorf("не получилось преобразовать тип interface{} в тип int64")
 		}

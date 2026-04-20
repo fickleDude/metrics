@@ -5,8 +5,11 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand/v2"
+	"net"
+
 	"net/http"
 	"runtime"
 	"sync"
@@ -22,7 +25,7 @@ type Task struct {
 }
 
 type ClientService struct {
-	mutex   sync.Mutex
+	mutex   sync.RWMutex
 	memStat *runtime.MemStats
 	client  http.Client
 	baseURL string
@@ -41,40 +44,40 @@ func Init(serverAddress string, pollInterval int, reportInterval int) *ClientSer
 	var random float64
 
 	return &ClientService{
-		mutex:   sync.Mutex{},
+		mutex:   sync.RWMutex{},
 		memStat: &memStat,
 		client:  http.Client{},
 		baseURL: fmt.Sprintf("http://%s/updates/", serverAddress),
 		tasks: map[string]*Task{
-			"Alloc":         {Value: &memStat.Alloc, Type: "gauge"},
-			"BuckHashSys":   {Value: &memStat.BuckHashSys, Type: "gauge"},
-			"Frees":         {Value: &memStat.Frees, Type: "gauge"},
-			"GCCPUFraction": {Value: &memStat.GCCPUFraction, Type: "gauge"},
-			"GCSys":         {Value: &memStat.GCSys, Type: "gauge"},
-			"HeapAlloc":     {Value: &memStat.HeapAlloc, Type: "gauge"},
-			"HeapIdle":      {Value: &memStat.HeapIdle, Type: "gauge"},
-			"HeapInuse":     {Value: &memStat.HeapInuse, Type: "gauge"},
-			"HeapObjects":   {Value: &memStat.HeapObjects, Type: "gauge"},
-			"HeapReleased":  {Value: &memStat.HeapReleased, Type: "gauge"},
-			"HeapSys":       {Value: &memStat.HeapSys, Type: "gauge"},
-			"LastGC":        {Value: &memStat.LastGC, Type: "gauge"},
-			"Lookups":       {Value: &memStat.Lookups, Type: "gauge"},
-			"MCacheInuse":   {Value: &memStat.MCacheInuse, Type: "gauge"},
-			"MCacheSys":     {Value: &memStat.MCacheSys, Type: "gauge"},
-			"MSpanInuse":    {Value: &memStat.MSpanInuse, Type: "gauge"},
-			"MSpanSys":      {Value: &memStat.MSpanSys, Type: "gauge"},
-			"Mallocs":       {Value: &memStat.Mallocs, Type: "gauge"},
-			"NextGC":        {Value: &memStat.NextGC, Type: "gauge"},
-			"NumForcedGC":   {Value: &memStat.NumForcedGC, Type: "gauge"},
-			"NumGC":         {Value: &memStat.NumGC, Type: "gauge"},
-			"OtherSys":      {Value: &memStat.OtherSys, Type: "gauge"},
-			"PauseTotalNs":  {Value: &memStat.PauseTotalNs, Type: "gauge"},
-			"StackInuse":    {Value: &memStat.StackInuse, Type: "gauge"},
-			"StackSys":      {Value: &memStat.StackSys, Type: "gauge"},
-			"Sys":           {Value: &memStat.Sys, Type: "gauge"},
-			"TotalAlloc":    {Value: &memStat.TotalAlloc, Type: "gauge"},
-			"PollCount":     {Value: &count, Type: "counter"},
-			"RandomValue":   {Value: &random, Type: "gauge"},
+			"Alloc":         {Value: nil, Type: "gauge"},
+			"BuckHashSys":   {Value: nil, Type: "gauge"},
+			"Frees":         {Value: nil, Type: "gauge"},
+			"GCCPUFraction": {Value: nil, Type: "gauge"},
+			"GCSys":         {Value: nil, Type: "gauge"},
+			"HeapAlloc":     {Value: nil, Type: "gauge"},
+			"HeapIdle":      {Value: nil, Type: "gauge"},
+			"HeapInuse":     {Value: nil, Type: "gauge"},
+			"HeapObjects":   {Value: nil, Type: "gauge"},
+			"HeapReleased":  {Value: nil, Type: "gauge"},
+			"HeapSys":       {Value: nil, Type: "gauge"},
+			"LastGC":        {Value: nil, Type: "gauge"},
+			"Lookups":       {Value: nil, Type: "gauge"},
+			"MCacheInuse":   {Value: nil, Type: "gauge"},
+			"MCacheSys":     {Value: nil, Type: "gauge"},
+			"MSpanInuse":    {Value: nil, Type: "gauge"},
+			"MSpanSys":      {Value: nil, Type: "gauge"},
+			"Mallocs":       {Value: nil, Type: "gauge"},
+			"NextGC":        {Value: nil, Type: "gauge"},
+			"NumForcedGC":   {Value: nil, Type: "gauge"},
+			"NumGC":         {Value: nil, Type: "gauge"},
+			"OtherSys":      {Value: nil, Type: "gauge"},
+			"PauseTotalNs":  {Value: nil, Type: "gauge"},
+			"StackInuse":    {Value: nil, Type: "gauge"},
+			"StackSys":      {Value: nil, Type: "gauge"},
+			"Sys":           {Value: nil, Type: "gauge"},
+			"TotalAlloc":    {Value: nil, Type: "gauge"},
+			"PollCount":     {Value: nil, Type: "counter"},
+			"RandomValue":   {Value: nil, Type: "gauge"},
 		},
 		pollTicker:   time.NewTicker(time.Duration(pollInterval) * time.Second),
 		reportTicker: time.NewTicker(time.Duration(reportInterval) * time.Second),
@@ -90,14 +93,12 @@ func (c *ClientService) Update(ctx context.Context, wg *sync.WaitGroup) {
 			wg.Done()
 			return
 		default:
-			c.mutex.Lock()
 			//read stat
 			runtime.ReadMemStats(c.memStat)
 			//update metric
-			*c.pollCount += 1
-			*c.randomValue = rand.Float64()
-
-			c.mutex.Unlock()
+			for k := range c.tasks {
+				c.setValue(k)
+			}
 			//sleep
 			<-c.pollTicker.C
 		}
@@ -105,7 +106,94 @@ func (c *ClientService) Update(ctx context.Context, wg *sync.WaitGroup) {
 
 }
 
-func sendTask(client http.Client, target string, metric []models.Metrics) {
+func (c *ClientService) setValue(name string) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	var value interface{}
+	switch name {
+	case "PollCount":
+		if v, ok := c.tasks[name].Value.(int); ok {
+			value = v + 1
+		} else {
+			value = 1
+		}
+	case "RandomValue":
+		value = rand.Float64() //c.randomValue
+	case "Alloc":
+		value = c.memStat.Alloc
+	case "BuckHashSys":
+		value = c.memStat.BuckHashSys
+	case "Frees":
+		value = c.memStat.Frees
+	case "GCCPUFraction":
+		value = c.memStat.GCCPUFraction
+	case "GCSys":
+		value = c.memStat.GCSys
+	case "HeapAlloc":
+		value = c.memStat.HeapAlloc
+	case "HeapIdle":
+		value = c.memStat.HeapIdle
+	case "HeapInuse":
+		value = c.memStat.HeapInuse
+	case "HeapObjects":
+		value = c.memStat.HeapObjects
+	case "HeapReleased":
+		value = c.memStat.HeapReleased
+	case "HeapSys":
+		value = c.memStat.HeapSys
+	case "LastGC":
+		value = c.memStat.LastGC
+	case "Lookups":
+		value = c.memStat.Lookups
+	case "MCacheInuse":
+		value = c.memStat.MCacheInuse
+	case "MCacheSys":
+		value = c.memStat.MCacheSys
+	case "MSpanInuse":
+		value = c.memStat.MSpanInuse
+	case "MSpanSys":
+		value = c.memStat.MSpanSys
+	case "Mallocs":
+		value = c.memStat.Mallocs
+	case "NextGC":
+		value = c.memStat.NextGC
+	case "NumForcedGC":
+		value = c.memStat.NumForcedGC
+	case "NumGC":
+		value = c.memStat.NumGC
+	case "OtherSys":
+		value = c.memStat.OtherSys
+	case "PauseTotalNs":
+		value = c.memStat.PauseTotalNs
+	case "StackInuse":
+		value = c.memStat.StackInuse
+	case "StackSys":
+		value = c.memStat.StackSys
+	case "Sys":
+		value = c.memStat.Sys
+	case "TotalAlloc":
+		value = c.memStat.TotalAlloc
+	default:
+		value = nil
+	}
+	c.tasks[name].Value = value
+}
+
+func (c *ClientService) getValue(name string) interface{} {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	return c.tasks[name].Value
+}
+
+func isRetriable(err error) bool {
+	var netErr *net.OpError
+	if errors.As(err, &netErr) {
+		return netErr.Temporary() || netErr.Timeout()
+	}
+	return false
+}
+
+func (c *ClientService) sendTask(metric []models.Metrics) {
 	//encode response
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(metric); err != nil {
@@ -122,7 +210,7 @@ func sendTask(client http.Client, target string, metric []models.Metrics) {
 	}
 	gz.Close()
 	//create request
-	request, err := http.NewRequest(http.MethodPost, target, &gzBuf)
+	request, err := http.NewRequest(http.MethodPost, c.baseURL, &gzBuf)
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return
@@ -131,9 +219,23 @@ func sendTask(client http.Client, target string, metric []models.Metrics) {
 	request.Header.Set("Content-Encoding", "gzip")
 
 	//get response
-	response, err := client.Do(request)
+	maxRetries := 3
+	retryDelay := []int{1, 3, 5}
+	var response *http.Response
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		response, err = c.client.Do(request)
+		if err == nil {
+			break
+		}
+		if isRetriable(err) {
+			time.Sleep(time.Duration(retryDelay[attempt]) * time.Second)
+			continue
+		} else {
+			break
+		}
+	}
 	if err != nil {
-		logger.Log.Error(err.Error())
+		logger.Log.Error(fmt.Sprintf("Failed after %d attempts: %v", maxRetries, err))
 		return
 	}
 	response.Body.Close()
@@ -146,16 +248,14 @@ func (c *ClientService) Post(ctx context.Context, wg *sync.WaitGroup) {
 			wg.Done()
 			return
 		default:
-			c.mutex.Lock()
-			snap := c.tasks
-			c.mutex.Unlock()
 			var metrics []models.Metrics
-			for k, v := range snap {
+			for k, v := range c.tasks {
 				//create metric
 				var metric models.Metrics
 				metric.ID = k
 				metric.MType = v.Type
-				err := metric.SetValue(v.Value)
+				value := c.getValue(k)
+				err := metric.SetValue(value)
 				if err != nil {
 					logger.Log.Error(err.Error())
 					continue
@@ -164,7 +264,7 @@ func (c *ClientService) Post(ctx context.Context, wg *sync.WaitGroup) {
 				metrics = append(metrics, metric)
 			}
 			if len(metrics) > 0 {
-				sendTask(c.client, c.baseURL, metrics)
+				c.sendTask(metrics)
 			}
 
 			<-c.reportTicker.C
