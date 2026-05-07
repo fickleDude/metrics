@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/fickleDude/metrics.git/internal/helpers"
 	"github.com/fickleDude/metrics.git/internal/repository"
 	"github.com/fickleDude/metrics.git/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -16,7 +17,7 @@ func TestUpdateHandler(t *testing.T) {
 	//create handler
 	repository := repository.NewMemStorage(nil)
 	service := service.NewMemStorageService(repository)
-	handler := NewMemStorageHandler(service, nil)
+	handler := NewMemStorageHandler(service, helpers.NewSigner("secretKey"))
 	type request struct {
 		url    string
 		method string
