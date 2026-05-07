@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/fickleDude/metrics.git/internal/config/db"
+	"github.com/fickleDude/metrics.git/internal/helpers"
 	"github.com/fickleDude/metrics.git/internal/logger"
 	models "github.com/fickleDude/metrics.git/internal/model"
 	"github.com/fickleDude/metrics.git/internal/service"
@@ -16,15 +17,20 @@ import (
 
 type MemStorageHandler struct {
 	service service.MemStorageInterface
+	signer  *helpers.Signer
 }
 
-func NewMemStorageHandler(service service.MemStorageInterface) *MemStorageHandler {
-	return &MemStorageHandler{service: service}
+func NewMemStorageHandler(service service.MemStorageInterface, signer *helpers.Signer) *MemStorageHandler {
+	return &MemStorageHandler{service: service, signer: signer}
 }
 
 func (h *MemStorageHandler) UpdateMetricJSONHandler(res http.ResponseWriter, req *http.Request) {
 	//check content type
 	if req.Header.Get("Content-Type") != "application/json" {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if !h.signer.VerifyRequest(req) {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -54,6 +60,11 @@ func (h *MemStorageHandler) UpdateMetricsJSONHandler(res http.ResponseWriter, re
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	//check sign
+	if !h.signer.VerifyRequest(req) {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	//decode request
 	var metrics []models.Metrics
 	if err := json.NewDecoder(req.Body).Decode(&metrics); err != nil {
@@ -77,6 +88,11 @@ func (h *MemStorageHandler) UpdateMetricsJSONHandler(res http.ResponseWriter, re
 }
 
 func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *http.Request) {
+	if !h.signer.VerifyRequest(req) {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	memType := chi.URLParam(req, "type")
 	memName := chi.URLParam(req, "name")
 	memValue := chi.URLParam(req, "value")
@@ -91,7 +107,6 @@ func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *ht
 			return
 		}
 		h.service.UpdateCount(memName, &memValueInt)
-		res.Write([]byte(fmt.Sprintf("metric %s updated. value = %d", memName, memValueInt)))
 
 	case "gauge":
 		memValueFloat, err := strconv.ParseFloat(memValue, 64)
@@ -101,7 +116,7 @@ func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *ht
 			return
 		}
 		h.service.UpdateGauge(memName, &memValueFloat)
-		res.Write([]byte(fmt.Sprintf("metric %s updated. value = %f", memName, memValueFloat)))
+
 	default:
 		res.WriteHeader(http.StatusBadRequest) //некорректный тип метрики
 		return
@@ -111,6 +126,10 @@ func (h *MemStorageHandler) UpdateMetricHandler(res http.ResponseWriter, req *ht
 func (h *MemStorageHandler) GetMetricJSONHandler(res http.ResponseWriter, req *http.Request) {
 	//check content type
 	if req.Header.Get("Content-Type") != "application/json" {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if !h.signer.VerifyRequest(req) {
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -135,10 +154,17 @@ func (h *MemStorageHandler) GetMetricJSONHandler(res http.ResponseWriter, req *h
 		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	//sign
+	h.signer.SignResponse(buf.Bytes(), res)
+	//write response
 	buf.WriteTo(res)
 }
 
 func (h *MemStorageHandler) GetMetricHandler(res http.ResponseWriter, req *http.Request) {
+	if !h.signer.VerifyRequest(req) {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	memName := chi.URLParam(req, "name")
 	memType := chi.URLParam(req, "type")
 	memValue := h.service.GetMetricValue(memName, memType)
@@ -146,10 +172,17 @@ func (h *MemStorageHandler) GetMetricHandler(res http.ResponseWriter, req *http.
 		res.WriteHeader(http.StatusNotFound)
 		return
 	}
+	//sign
+	h.signer.SignResponse([]byte(memValue), res)
+	//write response
 	res.Write([]byte(memValue))
 }
 
 func (h *MemStorageHandler) GetMetricsHTMLHandler(res http.ResponseWriter, req *http.Request) {
+	if !h.signer.VerifyRequest(req) {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	res.Header().Set("Content-Type", "text/html")
 	memValues := h.service.GetMetricValues()
 	body := fmt.Sprintf(`<!DOCTYPE html>
@@ -165,7 +198,9 @@ func (h *MemStorageHandler) GetMetricsHTMLHandler(res http.ResponseWriter, req *
 				%s
 			</body>
 			</html>`, memValues)
-
+	//sign
+	h.signer.SignResponse([]byte(body), res)
+	//write response
 	fmt.Fprint(res, body)
 }
 

@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fickleDude/metrics.git/internal/helpers"
 	"github.com/fickleDude/metrics.git/internal/logger"
 	models "github.com/fickleDude/metrics.git/internal/model"
 )
@@ -25,23 +26,19 @@ type Task struct {
 }
 
 type ClientService struct {
-	mutex   sync.RWMutex
-	memStat *runtime.MemStats
-	client  http.Client
-	baseURL string
-	tasks   map[string]*Task
-	//extra
-	pollCount    *int64
-	randomValue  *float64
+	mutex        sync.RWMutex
+	memStat      *runtime.MemStats
+	client       http.Client
+	baseURL      string
+	tasks        map[string]*Task
 	pollTicker   *time.Ticker
 	reportTicker *time.Ticker
+	signer       *helpers.Signer
 }
 
-func Init(serverAddress string, pollInterval int, reportInterval int) *ClientService {
+func Init(serverAddress string, pollInterval int, reportInterval int, key string) *ClientService {
 	//get initial stat
 	memStat := runtime.MemStats{}
-	var count int64
-	var random float64
 
 	return &ClientService{
 		mutex:   sync.RWMutex{},
@@ -81,8 +78,7 @@ func Init(serverAddress string, pollInterval int, reportInterval int) *ClientSer
 		},
 		pollTicker:   time.NewTicker(time.Duration(pollInterval) * time.Second),
 		reportTicker: time.NewTicker(time.Duration(reportInterval) * time.Second),
-		pollCount:    &count,
-		randomValue:  &random,
+		signer:       helpers.NewSigner(key),
 	}
 }
 
@@ -217,7 +213,7 @@ func (c *ClientService) sendTask(metric []models.Metrics) {
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Content-Encoding", "gzip")
-
+	c.signer.SignRequest(buf.Bytes(), request)
 	//get response
 	maxRetries := 3
 	retryDelay := []int{1, 3, 5}

@@ -6,6 +6,7 @@ import (
 	"github.com/fickleDude/metrics.git/internal/config"
 	"github.com/fickleDude/metrics.git/internal/config/db"
 	"github.com/fickleDude/metrics.git/internal/handler"
+	"github.com/fickleDude/metrics.git/internal/helpers"
 	"github.com/fickleDude/metrics.git/internal/logger"
 	"github.com/fickleDude/metrics.git/internal/middleware"
 	"github.com/fickleDude/metrics.git/internal/repository"
@@ -40,11 +41,13 @@ func main() {
 		memRepository = repository.NewMemStorage(nil)
 	}
 	service := s.NewMemStorageService(memRepository)
-	handler := handler.NewMemStorageHandler(service)
+	signer := helpers.NewSigner(cfg.Key())
+	handler := handler.NewMemStorageHandler(service, signer)
 
 	//router
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger)
+	//r.Use(middleware.HMACWriter)
 	r.Use(middleware.Gzip)
 	r.Route("/", func(r chi.Router) {
 		r.Get("/ping", handler.GetDbConnectionHandler)

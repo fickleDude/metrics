@@ -22,6 +22,7 @@ type Config struct {
 	fileStoragePath string
 	restore         bool
 	databaseDNS     string
+	key             string
 }
 
 var (
@@ -93,6 +94,10 @@ func (c *Config) DatabaseDNS() string {
 	return c.databaseDNS
 }
 
+func (c *Config) Key() string {
+	return c.key
+}
+
 func checkRunAddr(addr string) error {
 	params := strings.Split(addr, ":")
 	if len(params) < 2 {
@@ -135,6 +140,11 @@ func (c *Config) parseEnv(binary string) {
 			c.databaseDNS = databaseDNS
 		}
 
+		envKey := os.Getenv("KEY")
+		if envKey != "" {
+			c.key = envKey
+		}
+
 	case "agent":
 		envReport := os.Getenv("REPORT_INTERVAL")
 		envReportInt, err := strconv.Atoi(envReport)
@@ -146,6 +156,11 @@ func (c *Config) parseEnv(binary string) {
 		envPollInt, err := strconv.Atoi(envPoll)
 		if err == nil {
 			c.pollInterval = envPollInt
+		}
+
+		envKey := os.Getenv("KEY")
+		if envKey != "" {
+			c.key = envKey
 		}
 	}
 
@@ -167,6 +182,7 @@ func (c *Config) parseFlags(binary string) {
 		server.StringVar(&c.fileStoragePath, "f", "metrics.txt", "путь до файла для сохранения показаний метрик")
 		server.BoolVar(&c.restore, "r", false, "определяет, нужно ли загружать значения из файла при старте сервера")
 		server.StringVar(&c.databaseDNS, "d", "", "строка подключения к СУБД")
+		server.StringVar(&c.key, "k", "", "ключ подписи")
 		server.Parse(os.Args[1:])
 	case "agent":
 		agent := flag.NewFlagSet("agent", flag.ExitOnError)
@@ -180,6 +196,7 @@ func (c *Config) parseFlags(binary string) {
 		})
 		agent.IntVar(&c.reportInterval, "r", 10, "частота отправки метрик в секундах")
 		agent.IntVar(&c.pollInterval, "p", 2, "частота опроса метрик в секундах")
+		agent.StringVar(&c.key, "k", "", "ключ подписи")
 		agent.Parse(os.Args[1:])
 	}
 }

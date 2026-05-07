@@ -16,7 +16,7 @@ func TestUpdateHandler(t *testing.T) {
 	//create handler
 	repository := repository.NewMemStorage(nil)
 	service := service.NewMemStorageService(repository)
-	handler := NewMemStorageHandler(service)
+	handler := NewMemStorageHandler(service, nil)
 	type request struct {
 		url    string
 		method string

@@ -23,7 +23,7 @@ func main() {
 	cfg := config.GetConfig(config.Agent)
 
 	//инициализируем метрики
-	service := agent.Init(cfg.RunAddr(), cfg.PollInterval(), cfg.ReportInterval())
+	service := agent.Init(cfg.RunAddr(), cfg.PollInterval(), cfg.ReportInterval(), cfg.Key())
 	logger.Log.Debug("Инициализация...")
 	// Запускаем горутину
 	var wg sync.WaitGroup
