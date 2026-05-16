@@ -23,6 +23,7 @@ type Config struct {
 	restore         bool
 	databaseDNS     string
 	key             string
+	rateLimit       int
 }
 
 var (
@@ -55,6 +56,7 @@ func GetConfig(binary string) *Config {
 				pollInterval:   2,
 				storeInterval:  300,
 				restore:        false,
+				rateLimit:      32,
 			}
 			agentConfig.parseFlags(binary)
 			agentConfig.parseEnv(binary)
@@ -96,6 +98,10 @@ func (c *Config) DatabaseDNS() string {
 
 func (c *Config) Key() string {
 	return c.key
+}
+
+func (c *Config) RateLimit() int {
+	return c.rateLimit
 }
 
 func checkRunAddr(addr string) error {
@@ -162,6 +168,12 @@ func (c *Config) parseEnv(binary string) {
 		if envKey != "" {
 			c.key = envKey
 		}
+
+		rateLimit := os.Getenv("RATE_LIMIT")
+		rateLimitInt, err := strconv.Atoi(rateLimit)
+		if err == nil {
+			c.rateLimit = rateLimitInt
+		}
 	}
 
 }
@@ -197,6 +209,7 @@ func (c *Config) parseFlags(binary string) {
 		agent.IntVar(&c.reportInterval, "r", 10, "частота отправки метрик в секундах")
 		agent.IntVar(&c.pollInterval, "p", 2, "частота опроса метрик в секундах")
 		agent.StringVar(&c.key, "k", "", "ключ подписи")
+		agent.IntVar(&c.rateLimit, "l", 32, "количество одновременно исходящих на сервер запросов")
 		agent.Parse(os.Args[1:])
 	}
 }

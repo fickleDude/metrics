@@ -19,17 +19,14 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	//agent config
-	const rateLimit = 5
-
 	//agent
 	cfg := config.GetConfig(config.Agent)
-	agent := agent.Init(cfg.RunAddr(), cfg.PollInterval(), cfg.ReportInterval(), cfg.Key(),rateLimit)
+	agent := agent.Init(cfg.RunAddr(), cfg.PollInterval(), cfg.ReportInterval(), cfg.Key(), cfg.RateLimit())
 
 	//jobs
 	var wg sync.WaitGroup
 	g := new(errgroup.Group)
-	for w := 1; w <= rateLimit; w++ {
+	for w := 1; w <= cfg.RateLimit(); w++ {
 		wg.Add(1)
 		g.Go(func() error {
 			return agent.Post(ctx, w, &wg)
@@ -37,7 +34,7 @@ func main() {
 	}
 
 	wg.Add(1)
-	go agent.Update(ctx, rateLimit, &wg)
+	go agent.Update(ctx, cfg.RateLimit(), &wg)
 
 	<-sigChan
 	cancel()
