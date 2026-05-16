@@ -9,176 +9,199 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net"
-
 	"net/http"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/DataDog/gopsutil/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 
 	"github.com/fickleDude/metrics.git/internal/helpers"
 	"github.com/fickleDude/metrics.git/internal/logger"
 	models "github.com/fickleDude/metrics.git/internal/model"
 )
 
-type Task struct {
-	Type  string
-	Value interface{}
+type Agent struct {
+	//concurrent
+	tasks          []*models.Metrics
+	jobs           chan []*models.Metrics
+	memStat        *runtime.MemStats
+	gopsutilStat   *mem.VirtualMemoryStat
+	pollInterval   int
+	reportInterval int
+	//request
+	signer  *helpers.Signer
+	client  http.Client
+	baseURL string
 }
 
-type ClientService struct {
-	mutex        sync.RWMutex
-	memStat      *runtime.MemStats
-	client       http.Client
-	baseURL      string
-	tasks        map[string]*Task
-	pollTicker   *time.Ticker
-	reportTicker *time.Ticker
-	signer       *helpers.Signer
-}
-
-func Init(serverAddress string, pollInterval int, reportInterval int, key string) *ClientService {
-	//get initial stat
-	memStat := runtime.MemStats{}
-
-	return &ClientService{
-		mutex:   sync.RWMutex{},
-		memStat: &memStat,
+func Init(serverAddress string, pollInterval int, reportInterval int, key string, rateLimit int) *Agent {
+	v, _ := mem.VirtualMemory()
+	return &Agent{
+		//concurrent
+		tasks: []*models.Metrics{
+			{ID: "Alloc", MType: "gauge", Value: nil},
+			{ID: "BuckHashSys", MType: "gauge", Value: nil},
+			{ID: "Frees", MType: "gauge", Value: nil},
+			{ID: "GCCPUFraction", MType: "gauge", Value: nil},
+			{ID: "GCSys", MType: "gauge", Value: nil},
+			{ID: "HeapAlloc", MType: "gauge", Value: nil},
+			{ID: "HeapIdle", MType: "gauge", Value: nil},
+			{ID: "HeapInuse", MType: "gauge", Value: nil},
+			{ID: "HeapObjects", MType: "gauge", Value: nil},
+			{ID: "HeapReleased", MType: "gauge", Value: nil},
+			{ID: "HeapSys", MType: "gauge", Value: nil},
+			{ID: "LastGC", MType: "gauge", Value: nil},
+			{ID: "Lookups", MType: "gauge", Value: nil},
+			{ID: "MCacheInuse", MType: "gauge", Value: nil},
+			{ID: "MCacheSys", MType: "gauge", Value: nil},
+			{ID: "MSpanInuse", MType: "gauge", Value: nil},
+			{ID: "MSpanSys", MType: "gauge", Value: nil},
+			{ID: "Mallocs", MType: "gauge", Value: nil},
+			{ID: "NextGC", MType: "gauge", Value: nil},
+			{ID: "NumForcedGC", MType: "gauge", Value: nil},
+			{ID: "NumGC", MType: "gauge", Value: nil},
+			{ID: "OtherSys", MType: "gauge", Value: nil},
+			{ID: "PauseTotalNs", MType: "gauge", Value: nil},
+			{ID: "StackInuse", MType: "gauge", Value: nil},
+			{ID: "StackSys", MType: "gauge", Value: nil},
+			{ID: "Sys", MType: "gauge", Value: nil},
+			{ID: "TotalAlloc", MType: "gauge", Value: nil},
+			{ID: "PollCount", MType: "counter", Delta: nil},
+			{ID: "RandomValue", MType: "gauge", Value: nil},
+			{ID: "TotalMemory", MType: "gauge", Value: nil},
+			{ID: "FreeMemory", MType: "gauge", Delta: nil},
+			{ID: "CPUutilization1", MType: "gauge", Value: nil},
+		},
+		jobs:           make(chan []*models.Metrics, rateLimit),
+		memStat:        &runtime.MemStats{},
+		gopsutilStat:   v,
+		pollInterval:   pollInterval,
+		reportInterval: reportInterval,
+		//request
 		client:  http.Client{},
 		baseURL: fmt.Sprintf("http://%s/updates/", serverAddress),
-		tasks: map[string]*Task{
-			"Alloc":         {Value: nil, Type: "gauge"},
-			"BuckHashSys":   {Value: nil, Type: "gauge"},
-			"Frees":         {Value: nil, Type: "gauge"},
-			"GCCPUFraction": {Value: nil, Type: "gauge"},
-			"GCSys":         {Value: nil, Type: "gauge"},
-			"HeapAlloc":     {Value: nil, Type: "gauge"},
-			"HeapIdle":      {Value: nil, Type: "gauge"},
-			"HeapInuse":     {Value: nil, Type: "gauge"},
-			"HeapObjects":   {Value: nil, Type: "gauge"},
-			"HeapReleased":  {Value: nil, Type: "gauge"},
-			"HeapSys":       {Value: nil, Type: "gauge"},
-			"LastGC":        {Value: nil, Type: "gauge"},
-			"Lookups":       {Value: nil, Type: "gauge"},
-			"MCacheInuse":   {Value: nil, Type: "gauge"},
-			"MCacheSys":     {Value: nil, Type: "gauge"},
-			"MSpanInuse":    {Value: nil, Type: "gauge"},
-			"MSpanSys":      {Value: nil, Type: "gauge"},
-			"Mallocs":       {Value: nil, Type: "gauge"},
-			"NextGC":        {Value: nil, Type: "gauge"},
-			"NumForcedGC":   {Value: nil, Type: "gauge"},
-			"NumGC":         {Value: nil, Type: "gauge"},
-			"OtherSys":      {Value: nil, Type: "gauge"},
-			"PauseTotalNs":  {Value: nil, Type: "gauge"},
-			"StackInuse":    {Value: nil, Type: "gauge"},
-			"StackSys":      {Value: nil, Type: "gauge"},
-			"Sys":           {Value: nil, Type: "gauge"},
-			"TotalAlloc":    {Value: nil, Type: "gauge"},
-			"PollCount":     {Value: nil, Type: "counter"},
-			"RandomValue":   {Value: nil, Type: "gauge"},
-		},
-		pollTicker:   time.NewTicker(time.Duration(pollInterval) * time.Second),
-		reportTicker: time.NewTicker(time.Duration(reportInterval) * time.Second),
-		signer:       helpers.NewSigner(key),
+		signer:  helpers.NewSigner(key),
 	}
 }
-
-func (c *ClientService) Update(ctx context.Context, wg *sync.WaitGroup) {
-	for {
-		select {
-		case <-ctx.Done():
-			wg.Done()
-			return
-		default:
-			//read stat
-			runtime.ReadMemStats(c.memStat)
-			//update metric
-			for k := range c.tasks {
-				c.setValue(k)
-			}
-			//sleep
-			<-c.pollTicker.C
-		}
-	}
-
-}
-
-func (c *ClientService) setValue(name string) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+func (a *Agent) getMemStatValue(ID string) interface{} {
 	var value interface{}
-	switch name {
-	case "PollCount":
-		if v, ok := c.tasks[name].Value.(int); ok {
-			value = v + 1
-		} else {
-			value = 1
-		}
+	switch ID {
+	// case "PollCount":
+	// 	if v, ok := a.tasks[ID].Value.(int); ok {
+	// 		value = v + 1
+	// 	} else {
+	// 		value = 1
+	// 	}
 	case "RandomValue":
 		value = rand.Float64() //c.randomValue
 	case "Alloc":
-		value = c.memStat.Alloc
+		value = a.memStat.Alloc
 	case "BuckHashSys":
-		value = c.memStat.BuckHashSys
+		value = a.memStat.BuckHashSys
 	case "Frees":
-		value = c.memStat.Frees
+		value = a.memStat.Frees
 	case "GCCPUFraction":
-		value = c.memStat.GCCPUFraction
+		value = a.memStat.GCCPUFraction
 	case "GCSys":
-		value = c.memStat.GCSys
+		value = a.memStat.GCSys
 	case "HeapAlloc":
-		value = c.memStat.HeapAlloc
+		value = a.memStat.HeapAlloc
 	case "HeapIdle":
-		value = c.memStat.HeapIdle
+		value = a.memStat.HeapIdle
 	case "HeapInuse":
-		value = c.memStat.HeapInuse
+		value = a.memStat.HeapInuse
 	case "HeapObjects":
-		value = c.memStat.HeapObjects
+		value = a.memStat.HeapObjects
 	case "HeapReleased":
-		value = c.memStat.HeapReleased
+		value = a.memStat.HeapReleased
 	case "HeapSys":
-		value = c.memStat.HeapSys
+		value = a.memStat.HeapSys
 	case "LastGC":
-		value = c.memStat.LastGC
+		value = a.memStat.LastGC
 	case "Lookups":
-		value = c.memStat.Lookups
+		value = a.memStat.Lookups
 	case "MCacheInuse":
-		value = c.memStat.MCacheInuse
+		value = a.memStat.MCacheInuse
 	case "MCacheSys":
-		value = c.memStat.MCacheSys
+		value = a.memStat.MCacheSys
 	case "MSpanInuse":
-		value = c.memStat.MSpanInuse
+		value = a.memStat.MSpanInuse
 	case "MSpanSys":
-		value = c.memStat.MSpanSys
+		value = a.memStat.MSpanSys
 	case "Mallocs":
-		value = c.memStat.Mallocs
+		value = a.memStat.Mallocs
 	case "NextGC":
-		value = c.memStat.NextGC
+		value = a.memStat.NextGC
 	case "NumForcedGC":
-		value = c.memStat.NumForcedGC
+		value = a.memStat.NumForcedGC
 	case "NumGC":
-		value = c.memStat.NumGC
+		value = a.memStat.NumGC
 	case "OtherSys":
-		value = c.memStat.OtherSys
+		value = a.memStat.OtherSys
 	case "PauseTotalNs":
-		value = c.memStat.PauseTotalNs
+		value = a.memStat.PauseTotalNs
 	case "StackInuse":
-		value = c.memStat.StackInuse
+		value = a.memStat.StackInuse
 	case "StackSys":
-		value = c.memStat.StackSys
+		value = a.memStat.StackSys
 	case "Sys":
-		value = c.memStat.Sys
+		value = a.memStat.Sys
 	case "TotalAlloc":
-		value = c.memStat.TotalAlloc
+		value = a.memStat.TotalAlloc
+	case "TotalMemory":
+		value = a.gopsutilStat.Total
+	case "FreeMemory":
+		value = a.gopsutilStat.Free
+	case "CPUutilization1":
+		value, _ = cpu.Counts(true)
+
 	default:
 		value = nil
 	}
-	c.tasks[name].Value = value
+	return value
 }
 
-func (c *ClientService) getValue(name string) interface{} {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-	return c.tasks[name].Value
+func (a *Agent) Update(ctx context.Context, rateLimits int, wg *sync.WaitGroup) {
+	ticker := time.NewTicker(time.Duration(a.pollInterval) * time.Second)
+	defer ticker.Stop()
+	defer close(a.jobs)
+	defer wg.Done()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			fmt.Println("updater ready")
+
+			runtime.ReadMemStats(a.memStat)
+			for _, t := range a.tasks {
+				if t.ID == "PollCount" {
+
+					if t.Delta == nil {
+						value := int64(1)
+						t.Delta = &value
+					} else {
+						value := *t.Delta + 1
+						t.Delta = &value
+					}
+				} else {
+					value := a.getMemStatValue(t.ID)
+					t.SetValue(value)
+				}
+			}
+
+			iter := (len(a.tasks) / rateLimits)
+			if len(a.tasks)%rateLimits != 0 {
+				iter++
+			}
+			for j := 0; j < min(rateLimits, len(a.tasks)); j++ {
+				fmt.Println("[", j*iter, ",", min(j*iter+iter, len(a.tasks)), "]")
+				a.jobs <- a.tasks[j*iter : min(j*iter+iter, len(a.tasks))]
+			}
+		}
+	}
 }
 
 func isRetriable(err error) bool {
@@ -189,12 +212,16 @@ func isRetriable(err error) bool {
 	return false
 }
 
-func (c *ClientService) sendTask(metric []models.Metrics) {
+func (a *Agent) sendTask(metric []*models.Metrics) error {
+	for _, m := range metric {
+		fmt.Println(m.ID, " updated")
+	}
+
 	//encode response
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(metric); err != nil {
 		logger.Log.Error(err.Error())
-		return
+		return err
 	}
 	//gzip
 	var gzBuf bytes.Buffer
@@ -202,24 +229,25 @@ func (c *ClientService) sendTask(metric []models.Metrics) {
 	_, err := gz.Write(buf.Bytes())
 	if err != nil {
 		logger.Log.Error(err.Error())
-		return
+		return err
 	}
 	gz.Close()
+
 	//create request
-	request, err := http.NewRequest(http.MethodPost, c.baseURL, &gzBuf)
+	request, err := http.NewRequest(http.MethodPost, a.baseURL, &gzBuf)
 	if err != nil {
 		logger.Log.Error(err.Error())
-		return
+		return err
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Content-Encoding", "gzip")
-	c.signer.SignRequest(buf.Bytes(), request)
+	a.signer.SignRequest(buf.Bytes(), request)
 	//get response
 	maxRetries := 3
 	retryDelay := []int{1, 3, 5}
 	var response *http.Response
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		response, err = c.client.Do(request)
+		response, err = a.client.Do(request)
 		if err == nil {
 			break
 		}
@@ -232,39 +260,31 @@ func (c *ClientService) sendTask(metric []models.Metrics) {
 	}
 	if err != nil {
 		logger.Log.Error(fmt.Sprintf("Failed after %d attempts: %v", maxRetries, err))
-		return
+		return err
 	}
 	response.Body.Close()
+	return nil
 }
 
-func (c *ClientService) Post(ctx context.Context, wg *sync.WaitGroup) {
-	for {
+func (a *Agent) Post(ctx context.Context, id int, wg *sync.WaitGroup) error {
+	ticker := time.NewTicker(time.Duration(a.reportInterval) * time.Second)
+	defer ticker.Stop()
+	defer wg.Done()
+	for j := range a.jobs {
 		select {
 		case <-ctx.Done():
-			wg.Done()
-			return
+			return nil
+		case <-ticker.C:
+			err := a.sendTask(j)
+			if err != nil {
+				return err
+			} else {
+				fmt.Println("рабочий", id, "запущен задача", j)
+			}
 		default:
-			var metrics []models.Metrics
-			for k, v := range c.tasks {
-				//create metric
-				var metric models.Metrics
-				metric.ID = k
-				metric.MType = v.Type
-				value := c.getValue(k)
-				err := metric.SetValue(value)
-				if err != nil {
-					logger.Log.Error(err.Error())
-					continue
-				}
-				//add to request
-				metrics = append(metrics, metric)
-			}
-			if len(metrics) > 0 {
-				c.sendTask(metrics)
-			}
-
-			<-c.reportTicker.C
+			fmt.Println("рабочий", id, "ждет")
 		}
-	}
 
+	}
+	return nil
 }

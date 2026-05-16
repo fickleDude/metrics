@@ -5,10 +5,8 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/rand/v2"
-	"net"
 
 	"net/http"
 	"runtime"
@@ -179,14 +177,6 @@ func (c *ClientService) getValue(name string) interface{} {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	return c.tasks[name].Value
-}
-
-func isRetriable(err error) bool {
-	var netErr *net.OpError
-	if errors.As(err, &netErr) {
-		return netErr.Temporary() || netErr.Timeout()
-	}
-	return false
 }
 
 func (c *ClientService) sendTask(metric []models.Metrics) {
