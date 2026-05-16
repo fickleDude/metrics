@@ -34,7 +34,7 @@ func main() {
 	}
 
 	wg.Add(1)
-	go agent.Update(ctx, cfg.RateLimit(), &wg)
+	go agent.Update(ctx, &wg)
 
 	<-sigChan
 	cancel()

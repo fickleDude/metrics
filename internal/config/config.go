@@ -56,7 +56,6 @@ func GetConfig(binary string) *Config {
 				pollInterval:   2,
 				storeInterval:  300,
 				restore:        false,
-				rateLimit:      32,
 			}
 			agentConfig.parseFlags(binary)
 			agentConfig.parseEnv(binary)
@@ -209,7 +208,7 @@ func (c *Config) parseFlags(binary string) {
 		agent.IntVar(&c.reportInterval, "r", 10, "частота отправки метрик в секундах")
 		agent.IntVar(&c.pollInterval, "p", 2, "частота опроса метрик в секундах")
 		agent.StringVar(&c.key, "k", "", "ключ подписи")
-		agent.IntVar(&c.rateLimit, "l", 32, "количество одновременно исходящих на сервер запросов")
+		agent.IntVar(&c.rateLimit, "l", 0, "количество одновременно исходящих на сервер запросов")
 		agent.Parse(os.Args[1:])
 	}
 }

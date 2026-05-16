@@ -30,6 +30,7 @@ type Agent struct {
 	gopsutilStat   *mem.VirtualMemoryStat
 	pollInterval   int
 	reportInterval int
+	rateLimit      int
 	//request
 	signer  *helpers.Signer
 	client  http.Client
@@ -38,7 +39,7 @@ type Agent struct {
 
 func Init(serverAddress string, pollInterval int, reportInterval int, key string, rateLimit int) *Agent {
 	v, _ := mem.VirtualMemory()
-	return &Agent{
+	agent := &Agent{
 		//concurrent
 		tasks: []*models.Metrics{
 			{ID: "Alloc", MType: "gauge", Value: nil},
@@ -84,6 +85,10 @@ func Init(serverAddress string, pollInterval int, reportInterval int, key string
 		baseURL: fmt.Sprintf("http://%s/updates/", serverAddress),
 		signer:  helpers.NewSigner(key),
 	}
+	if rateLimit == 0 {
+		rateLimit = len(agent.tasks)
+	}
+	return agent
 }
 func (a *Agent) getMemStatValue(ID string) interface{} {
 	var value interface{}
@@ -163,7 +168,7 @@ func (a *Agent) getMemStatValue(ID string) interface{} {
 	return value
 }
 
-func (a *Agent) Update(ctx context.Context, rateLimits int, wg *sync.WaitGroup) {
+func (a *Agent) Update(ctx context.Context, wg *sync.WaitGroup) {
 	ticker := time.NewTicker(time.Duration(a.pollInterval) * time.Second)
 	defer ticker.Stop()
 	defer close(a.jobs)
@@ -192,11 +197,11 @@ func (a *Agent) Update(ctx context.Context, rateLimits int, wg *sync.WaitGroup) 
 				}
 			}
 
-			iter := (len(a.tasks) / rateLimits)
-			if len(a.tasks)%rateLimits != 0 {
+			iter := (len(a.tasks) / a.rateLimit)
+			if len(a.tasks)%a.rateLimit != 0 {
 				iter++
 			}
-			for j := 0; j < min(rateLimits, len(a.tasks)); j++ {
+			for j := 0; j < min(a.rateLimit, len(a.tasks)); j++ {
 				fmt.Println("[", j*iter, ",", min(j*iter+iter, len(a.tasks)), "]")
 				a.jobs <- a.tasks[j*iter : min(j*iter+iter, len(a.tasks))]
 			}
