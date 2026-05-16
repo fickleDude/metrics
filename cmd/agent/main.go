@@ -26,7 +26,7 @@ func main() {
 	//jobs
 	var wg sync.WaitGroup
 	g := new(errgroup.Group)
-	for w := 1; w <= cfg.RateLimit(); w++ {
+	for w := 0; w <= 100; w++ {
 		wg.Add(1)
 		g.Go(func() error {
 			return agent.Post(ctx, w, &wg)

@@ -25,7 +25,7 @@ import (
 type Agent struct {
 	//concurrent
 	tasks          []*models.Metrics
-	jobs           chan []*models.Metrics
+	jobs           chan *models.Metrics
 	memStat        *runtime.MemStats
 	gopsutilStat   *mem.VirtualMemoryStat
 	pollInterval   int
@@ -75,30 +75,25 @@ func Init(serverAddress string, pollInterval int, reportInterval int, key string
 			{ID: "FreeMemory", MType: "gauge", Delta: nil},
 			{ID: "CPUutilization1", MType: "gauge", Value: nil},
 		},
-		jobs:           make(chan []*models.Metrics, rateLimit),
 		memStat:        &runtime.MemStats{},
 		gopsutilStat:   v,
 		pollInterval:   pollInterval,
 		reportInterval: reportInterval,
 		//request
 		client:  http.Client{},
-		baseURL: fmt.Sprintf("http://%s/updates/", serverAddress),
+		baseURL: fmt.Sprintf("http://%s/update/", serverAddress),
 		signer:  helpers.NewSigner(key),
 	}
 	if rateLimit == 0 {
-		rateLimit = len(agent.tasks)
+		agent.rateLimit = len(agent.tasks)
+
 	}
+	agent.jobs = make(chan *models.Metrics, rateLimit)
 	return agent
 }
 func (a *Agent) getMemStatValue(ID string) interface{} {
 	var value interface{}
 	switch ID {
-	// case "PollCount":
-	// 	if v, ok := a.tasks[ID].Value.(int); ok {
-	// 		value = v + 1
-	// 	} else {
-	// 		value = 1
-	// 	}
 	case "RandomValue":
 		value = rand.Float64() //c.randomValue
 	case "Alloc":
@@ -201,9 +196,8 @@ func (a *Agent) Update(ctx context.Context, wg *sync.WaitGroup) {
 			if len(a.tasks)%a.rateLimit != 0 {
 				iter++
 			}
-			for j := 0; j < min(a.rateLimit, len(a.tasks)); j++ {
-				fmt.Println("[", j*iter, ",", min(j*iter+iter, len(a.tasks)), "]")
-				a.jobs <- a.tasks[j*iter : min(j*iter+iter, len(a.tasks))]
+			for j := 0; j < len(a.tasks); j++ {
+				a.jobs <- a.tasks[j]
 			}
 		}
 	}
@@ -217,11 +211,8 @@ func isRetriable(err error) bool {
 	return false
 }
 
-func (a *Agent) sendTask(metric []*models.Metrics) error {
-	for _, m := range metric {
-		fmt.Println(m.ID, " updated")
-	}
-
+func (a *Agent) sendTask(metric *models.Metrics) error {
+	fmt.Println(metric.ID, " send")
 	//encode response
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(metric); err != nil {
