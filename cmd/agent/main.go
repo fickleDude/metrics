@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"sync"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/fickleDude/metrics.git/internal/agent"
 	"github.com/fickleDude/metrics.git/internal/config"
-	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -25,23 +23,14 @@ func main() {
 
 	//jobs
 	var wg sync.WaitGroup
-	g := new(errgroup.Group)
-	for w := 0; w <= 100; w++ {
-		wg.Add(1)
-		g.Go(func() error {
-			return agent.Post(ctx, w, &wg)
-		})
-	}
+	wg.Add(1)
+	go agent.Post(ctx, &wg)
 
 	wg.Add(1)
 	go agent.Update(ctx, &wg)
 
 	<-sigChan
 	cancel()
-
-	if err := g.Wait(); err != nil {
-		log.Println(err)
-	}
 
 	wg.Wait()
 }

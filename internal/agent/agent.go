@@ -16,6 +16,8 @@ import (
 
 	"github.com/DataDog/gopsutil/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/fickleDude/metrics.git/internal/helpers"
 	"github.com/fickleDude/metrics.git/internal/logger"
@@ -25,12 +27,12 @@ import (
 type Agent struct {
 	//concurrent
 	tasks          []*models.Metrics
-	jobs           chan *models.Metrics
 	memStat        *runtime.MemStats
 	gopsutilStat   *mem.VirtualMemoryStat
 	pollInterval   int
 	reportInterval int
 	rateLimit      int
+	mutex          sync.RWMutex
 	//request
 	signer  *helpers.Signer
 	client  http.Client
@@ -79,6 +81,7 @@ func Init(serverAddress string, pollInterval int, reportInterval int, key string
 		gopsutilStat:   v,
 		pollInterval:   pollInterval,
 		reportInterval: reportInterval,
+		mutex:          sync.RWMutex{},
 		//request
 		client:  http.Client{},
 		baseURL: fmt.Sprintf("http://%s/update/", serverAddress),
@@ -88,9 +91,31 @@ func Init(serverAddress string, pollInterval int, reportInterval int, key string
 		agent.rateLimit = len(agent.tasks)
 
 	}
-	agent.jobs = make(chan *models.Metrics, rateLimit)
 	return agent
 }
+func (a *Agent) setMetric(metric *models.Metrics) {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+	if metric.ID == "PollCount" {
+		if metric.Delta == nil {
+			value := int64(1)
+			metric.Delta = &value
+		} else {
+			value := *metric.Delta + 1
+			metric.Delta = &value
+		}
+	} else {
+		value := a.getMemStatValue(metric.ID)
+		metric.SetValue(value)
+	}
+}
+
+func (a *Agent) getMetric(index int) models.Metrics {
+	a.mutex.RLock()
+	defer a.mutex.RUnlock()
+	return *a.tasks[index]
+}
+
 func (a *Agent) getMemStatValue(ID string) interface{} {
 	var value interface{}
 	switch ID {
@@ -166,39 +191,17 @@ func (a *Agent) getMemStatValue(ID string) interface{} {
 func (a *Agent) Update(ctx context.Context, wg *sync.WaitGroup) {
 	ticker := time.NewTicker(time.Duration(a.pollInterval) * time.Second)
 	defer ticker.Stop()
-	defer close(a.jobs)
 	defer wg.Done()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			fmt.Println("updater ready")
-
 			runtime.ReadMemStats(a.memStat)
 			for _, t := range a.tasks {
-				if t.ID == "PollCount" {
-
-					if t.Delta == nil {
-						value := int64(1)
-						t.Delta = &value
-					} else {
-						value := *t.Delta + 1
-						t.Delta = &value
-					}
-				} else {
-					value := a.getMemStatValue(t.ID)
-					t.SetValue(value)
-				}
+				a.setMetric(t)
 			}
-
-			iter := (len(a.tasks) / a.rateLimit)
-			if len(a.tasks)%a.rateLimit != 0 {
-				iter++
-			}
-			for j := 0; j < len(a.tasks); j++ {
-				a.jobs <- a.tasks[j]
-			}
+			logger.Log.Debug("метрики обновлены")
 		}
 	}
 }
@@ -212,7 +215,7 @@ func isRetriable(err error) bool {
 }
 
 func (a *Agent) sendTask(metric *models.Metrics) error {
-	fmt.Println(metric.ID, " send")
+	logger.Log.Debug("send", zap.String("ID", metric.ID))
 	//encode response
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(metric); err != nil {
@@ -262,25 +265,32 @@ func (a *Agent) sendTask(metric *models.Metrics) error {
 	return nil
 }
 
-func (a *Agent) Post(ctx context.Context, id int, wg *sync.WaitGroup) error {
+func (a *Agent) Post(ctx context.Context, wg *sync.WaitGroup) {
 	ticker := time.NewTicker(time.Duration(a.reportInterval) * time.Second)
 	defer ticker.Stop()
 	defer wg.Done()
-	for j := range a.jobs {
+	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		case <-ticker.C:
-			err := a.sendTask(j)
-			if err != nil {
-				return err
-			} else {
-				fmt.Println("рабочий", id, "запущен задача", j)
-			}
-		default:
-			fmt.Println("рабочий", id, "ждет")
-		}
+			stop := make(chan struct{}, a.rateLimit)
+			g := new(errgroup.Group)
+			for i := 0; i < len(a.tasks); i++ {
+				stop <- struct{}{} // Ждем свободный слот
 
+				metric := a.getMetric(i)
+				g.Go(func() error {
+					defer func() { <-stop }() // Освобождаем слот
+					return a.sendTask(&metric)
+				})
+			}
+			err := g.Wait()
+			if err != nil {
+				logger.Log.Error(err.Error())
+			} else {
+				logger.Log.Debug("метрики отправлены")
+			}
+		}
 	}
-	return nil
 }
