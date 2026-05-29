@@ -114,7 +114,7 @@ func (s *MemDatabaseStorage) queryWithRetry(query string, args ...any) (*sql.Row
 	maxRetries := 3
 	retryDelay := []int{1, 3, 5}
 	var lastError error
-
+      
 	for attempt := range maxRetries {
 		rows, lastError := s.db.Query(query, args...)
 		if lastError == nil {
